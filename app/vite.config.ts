@@ -5,8 +5,9 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   base: '/peer-poker/',
   plugins: [react(), tailwindcss()],
-  server: { port: 8000, strictPort: true },
-  preview: { port: 8000, strictPort: true },
+  // host: true binds 0.0.0.0 so the container's port-forward reaches the dev server
+  server: { host: true, port: 8000, strictPort: true },
+  preview: { host: true, port: 8000, strictPort: true },
   test: {
     environment: 'jsdom',
     globals: true,
