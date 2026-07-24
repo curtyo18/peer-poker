@@ -15,6 +15,9 @@ function get(key: string): string | null {
 function set(key: string, val: string): void {
   try { globalThis.localStorage?.setItem(key, val); } catch { /* no-op */ }
 }
+function remove(key: string): void {
+  try { globalThis.localStorage?.removeItem(key); } catch { /* no-op */ }
+}
 
 export const loadName = (): string => get(K.name) ?? '';
 export const saveName = (name: string): void => set(K.name, name);
@@ -35,6 +38,7 @@ export function loadSession(): { roomId: string; state: SessionState } | null {
 }
 export const saveSession = (roomId: string, state: SessionState): void =>
   set(K.session, JSON.stringify({ roomId, state }));
+export const clearSession = (): void => remove(K.session);
 
 export const loadHostPeerId = (): string | null => get(K.hostPeerId);
 export const saveHostPeerId = (id: string): void => set(K.hostPeerId, id);

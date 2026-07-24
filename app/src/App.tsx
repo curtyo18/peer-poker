@@ -5,11 +5,12 @@ import { Landing } from './ui/Landing';
 import { HostView } from './ui/HostView';
 import { ParticipantView } from './ui/ParticipantView';
 import { useSession } from './store/session';
-import type { Deck } from './domain/types';
+import type { Deck, SessionState } from './domain/types';
 import { createHostPeer, connectToHost } from './net/peer';
 import { makeHostConn } from './net/hostConn';
 import { makeGuestConn } from './net/guestConn';
 import { setPeer, setHost, setGuest, teardownLive } from './net/live';
+import { loadSession, clearSession } from './store/persistence';
 
 type Mode = 'landing' | 'host' | 'guest';
 type Terminal = 'kicked' | 'ended' | 'unreachable' | null;
@@ -23,6 +24,7 @@ function App() {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [myPeerId, setMyPeerId] = useState<string | undefined>(undefined);
   const [terminal, setTerminal] = useState<Terminal>(null);
+  const [resumable, setResumable] = useState<{ roomId: string; state: SessionState } | null>(null);
   const state = useSession((s) => s.state);
   const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -30,6 +32,10 @@ function App() {
     const params = new URLSearchParams(location.search);
     const room = params.get('room');
     if (room) setInitialRoom(room);
+  }, []);
+
+  useEffect(() => {
+    setResumable(loadSession());
   }, []);
 
   useEffect(() => {
@@ -68,6 +74,30 @@ function App() {
     setMode('host');
   };
 
+  const handleResume = async () => {
+    const saved = loadSession();
+    if (!saved) return;
+    const hp = createHostPeer();
+    setPeer(hp.peer);
+    await hp.ready;
+    useSession.getState().resumeHost(saved.state);
+    const host = makeHostConn();
+    setHost(host);
+    hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
+    const base = import.meta.env.BASE_URL;
+    const link = `${location.origin}${base}${base.endsWith('/') ? '' : '/'}?room=${saved.state.roomId}`;
+    setShareLink(link);
+    setMyPeerId(saved.state.hostPeerId);
+    host.broadcast();
+    setResumable(null);
+    setMode('host');
+  };
+
+  const handleDiscard = () => {
+    clearSession();
+    setResumable(null);
+  };
+
   const handleJoin = ({ roomId, name, role }: { roomId: string; name: string; role: 'voter' | 'observer' }) => {
     const { peer, conn } = connectToHost(roomId);
     setPeer(peer);
@@ -100,7 +130,30 @@ function App() {
     <>
       <AppHeader />
       {mode === 'landing' && (
-        <Landing initialRoom={initialRoom} onHost={handleHost} onJoin={handleJoin} />
+        <>
+          {resumable && (
+            <div className="mx-auto mt-4 flex max-w-2xl items-center justify-between gap-4 rounded-lg border border-border bg-muted p-4 text-fg">
+              <span>You have a prior host session for room &ldquo;{resumable.roomId}&rdquo;.</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="rounded border border-border bg-bg px-3 py-1.5 text-sm text-fg hover:text-accent transition-colors"
+                  onClick={handleResume}
+                >
+                  Resume session
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-border bg-bg px-3 py-1.5 text-sm text-fg hover:text-accent transition-colors"
+                  onClick={handleDiscard}
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          )}
+          <Landing initialRoom={initialRoom} onHost={handleHost} onJoin={handleJoin} />
+        </>
       )}
       {mode === 'host' && state && myPeerId && (
         <HostView
