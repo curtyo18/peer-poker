@@ -34,5 +34,21 @@ export function makeHostConn() {
     if (state) conn.send({ type: 'state', state });
   }
 
-  return { onConnection, handleMessage, broadcast };
+  function kick(peerId: string) {
+    const conn = conns.get(peerId);
+    conn?.send({ type: 'kicked' });
+    conn?.close();
+    conns.delete(peerId);
+    useSession.getState().update((st) => ({
+      ...st,
+      participants: st.participants.filter((p) => p.peerId !== peerId),
+    }));
+    broadcast();
+  }
+
+  function end() {
+    for (const c of conns.values()) c.send({ type: 'sessionEnded' });
+  }
+
+  return { onConnection, handleMessage, broadcast, kick, end };
 }

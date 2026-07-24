@@ -7,9 +7,11 @@ type HostMsg =
   | { type: 'kicked' }
   | { type: 'sessionEnded' };
 
-export function makeGuestConn(conn: DataConnection) {
+export function makeGuestConn(conn: DataConnection, onStatus?: (s: 'kicked' | 'ended') => void) {
   function handleData(msg: HostMsg) {
     if (msg.type === 'state') useSession.getState().setState(msg.state);
+    if (msg.type === 'kicked') onStatus?.('kicked');
+    if (msg.type === 'sessionEnded') onStatus?.('ended');
   }
   conn.on('data', (d) => handleData(d as HostMsg));
 
