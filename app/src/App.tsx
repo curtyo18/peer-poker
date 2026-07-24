@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { AppHeader } from './ui/AppHeader';
 import { Landing } from './ui/Landing';
+import { HostView } from './ui/HostView';
+import { ParticipantView } from './ui/ParticipantView';
 import { useSession } from './store/session';
 import type { Deck } from './domain/types';
 import { createHostPeer, connectToHost } from './net/peer';
@@ -10,18 +12,19 @@ import { makeGuestConn } from './net/guestConn';
 import { setPeer, setHost, setGuest, teardownLive } from './net/live';
 
 type Mode = 'landing' | 'host' | 'guest';
+type Terminal = 'kicked' | 'ended' | 'unreachable' | null;
 
-const mainClass = 'mx-auto flex max-w-2xl flex-col gap-4 p-4';
-const buttonClass =
-  'rounded border border-border bg-muted px-3 py-1.5 text-sm text-fg hover:text-accent transition-colors';
-const sectionClass = 'rounded-lg border border-border bg-muted p-4 space-y-3';
+const GUEST_CONNECT_TIMEOUT_MS = 15000;
 
 function App() {
   const [mode, setMode] = useState<Mode>('landing');
   const [initialRoom, setInitialRoom] = useState<string | undefined>(undefined);
   const [shareLink, setShareLink] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [myPeerId, setMyPeerId] = useState<string | undefined>(undefined);
+  const [terminal, setTerminal] = useState<Terminal>(null);
   const state = useSession((s) => s.state);
+  const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -39,10 +42,18 @@ function App() {
       .catch(() => setQrDataUrl(null));
   }, [shareLink]);
 
+  useEffect(() => {
+    if (mode === 'guest' && state && connectTimeoutRef.current) {
+      clearTimeout(connectTimeoutRef.current);
+      connectTimeoutRef.current = null;
+    }
+  }, [mode, state]);
+
   const handleHost = async ({ deck, name, hostVotes }: { deck: Deck; name: string; hostVotes: boolean }) => {
     const hp = createHostPeer();
     setPeer(hp.peer);
     const id = await hp.ready;
+    setMyPeerId(id);
     useSession.getState().initHost(id, deck, hostVotes);
     const host = makeHostConn();
     setHost(host);
@@ -60,22 +71,29 @@ function App() {
   const handleJoin = ({ roomId, name, role }: { roomId: string; name: string; role: 'voter' | 'observer' }) => {
     const { peer, conn } = connectToHost(roomId);
     setPeer(peer);
-    const guest = makeGuestConn(conn);
+    peer.on('open', (pid) => setMyPeerId(pid));
+    peer.on('error', () => setTerminal('unreachable'));
+    const guest = makeGuestConn(conn, (s) => setTerminal(s === 'kicked' ? 'kicked' : 'ended'));
     setGuest(guest);
     conn.on('open', () => guest.join(name, role));
     setMode('guest');
+    connectTimeoutRef.current = setTimeout(() => {
+      if (useSession.getState().state === null) setTerminal('unreachable');
+    }, GUEST_CONNECT_TIMEOUT_MS);
   };
 
   const handleLeave = () => {
+    if (connectTimeoutRef.current) {
+      clearTimeout(connectTimeoutRef.current);
+      connectTimeoutRef.current = null;
+    }
     teardownLive();
     useSession.getState().reset();
     setShareLink('');
     setQrDataUrl(null);
+    setMyPeerId(undefined);
+    setTerminal(null);
     setMode('landing');
-  };
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareLink).catch(() => { /* ignore */ });
   };
 
   return (
@@ -84,56 +102,17 @@ function App() {
       {mode === 'landing' && (
         <Landing initialRoom={initialRoom} onHost={handleHost} onJoin={handleJoin} />
       )}
-      {mode === 'host' && (
-        <main className={mainClass}>
-          <section className={sectionClass}>
-            <h2 className="text-lg font-semibold">Waiting for participants&hellip;</h2>
-            <p className="break-all text-sm text-fg">{shareLink}</p>
-            <div className="flex items-center gap-3">
-              <button type="button" className={buttonClass} onClick={handleCopyLink}>
-                Copy link
-              </button>
-              <button type="button" className={buttonClass} onClick={handleLeave}>
-                Leave
-              </button>
-            </div>
-            {qrDataUrl && <img src={qrDataUrl} alt="QR code for room link" width={180} height={180} />}
-          </section>
-          <section className={sectionClass}>
-            <h2 className="text-lg font-semibold">Participants</h2>
-            <ul className="space-y-1">
-              {state?.participants.map((p) => (
-                <li key={p.peerId} className="text-sm text-fg">
-                  {p.name} &middot; {p.role} &middot; {p.connected ? 'connected' : 'disconnected'}
-                </li>
-              ))}
-            </ul>
-          </section>
-        </main>
+      {mode === 'host' && state && myPeerId && (
+        <HostView
+          state={state}
+          shareLink={shareLink}
+          qrDataUrl={qrDataUrl}
+          myPeerId={myPeerId}
+          onLeave={handleLeave}
+        />
       )}
       {mode === 'guest' && (
-        <main className={mainClass}>
-          <section className={sectionClass}>
-            <h2 className="text-lg font-semibold">
-              {state ? `Room ${state.roomId}` : 'Connecting…'}
-            </h2>
-            <button type="button" className={buttonClass} onClick={handleLeave}>
-              Leave
-            </button>
-          </section>
-          {state && (
-            <section className={sectionClass}>
-              <h2 className="text-lg font-semibold">Participants</h2>
-              <ul className="space-y-1">
-                {state.participants.map((p) => (
-                  <li key={p.peerId} className="text-sm text-fg">
-                    {p.name} &middot; {p.role} &middot; {p.connected ? 'connected' : 'disconnected'}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </main>
+        <ParticipantView state={state} myPeerId={myPeerId} terminal={terminal} onLeave={handleLeave} />
       )}
     </>
   );
