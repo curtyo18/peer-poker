@@ -146,10 +146,17 @@ function App() {
       try { hp.peer.reconnect(); } catch { /* destroyed peer: nothing to reconnect */ }
     });
     hp.ready.then((assignedId) => {
+      console.warn('[peerpoker] hosting', { code, requestedId: id, assignedId });
       useSession.getState().initHost(assignedId, deck, hostVotes);
       const host = makeHostConn();
       setHost(host);
-      hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
+      hp.peer.on('connection', (conn) => {
+        console.warn('[peerpoker] incoming connection from', conn.peer);
+        conn.on('open', () => {
+          console.warn('[peerpoker] connection open', conn.peer);
+          host.onConnection(conn);
+        });
+      });
       if (hostVotes) {
         useSession.getState().dispatch({ type: 'join', name, role: 'voter' }, assignedId);
         host.broadcast();
@@ -201,6 +208,7 @@ function App() {
     setAttemptedJoin({ roomCode, name, role });
     syncUrl(roomCode);
     const attempt = ++joinAttemptRef.current;
+    console.warn('[peerpoker] dialling', { code: roomCode, roomId: id });
     const { peer, conn } = connectToHost(id);
     setPeer(peer);
     peer.on('open', (pid) => setMyPeerId(pid));
