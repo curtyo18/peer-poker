@@ -4,8 +4,7 @@ import QRCode from 'qrcode';
 import { AppHeader } from './ui/AppHeader';
 import { Landing } from './ui/Landing';
 import { JoinScreen } from './ui/JoinScreen';
-import { HostView } from './ui/HostView';
-import { ParticipantView } from './ui/ParticipantView';
+import { RoomView } from './ui/RoomView';
 import { useSession } from './store/session';
 import type { Deck, SessionState } from './domain/types';
 import { createHostPeer, connectToHost, isRoomMissingError } from './net/peer';
@@ -323,21 +322,26 @@ function App() {
         <JoinScreen roomCode={initialRoom} storedName={storedName} onJoin={handleJoin} />
       )}
       {mode === 'host' && state && myPeerId && (
-        <HostView
+        <RoomView
+          role="host"
           state={state}
           shareLink={shareLink}
           roomCode={displayRoomCode}
           qrDataUrl={qrDataUrl}
           myPeerId={myPeerId}
+          terminal={terminal}
           onLeave={handleLeave}
         />
       )}
       {mode === 'guest' && (
-        <ParticipantView
+        <RoomView
+          role="guest"
           state={state}
+          shareLink={shareLink}
+          roomCode={displayRoomCode}
+          qrDataUrl={qrDataUrl}
           myPeerId={myPeerId}
           terminal={terminal}
-          roomCode={displayRoomCode}
           onHostRoom={attemptedJoin ? handleHostAttemptedRoom : undefined}
           onLeave={handleLeave}
         />
