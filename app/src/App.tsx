@@ -211,7 +211,13 @@ function App() {
     console.warn('[peerpoker] dialling', { code: roomCode, roomId: id });
     const { peer, conn } = connectToHost(id);
     setPeer(peer);
-    peer.on('open', (pid) => setMyPeerId(pid));
+    // Until this fires the peer has no broker connection, and PeerJS quietly queues the offer
+    // rather than failing — the join then dies of the timeout with nothing logged anywhere.
+    peer.on('open', (pid) => {
+      console.warn('[peerpoker] guest peer registered as', pid);
+      setMyPeerId(pid);
+    });
+    peer.on('disconnected', () => console.warn('[peerpoker] guest lost the broker'));
     peer.on('error', (e) => {
       // A torn-down peer can still emit; ignore anything from an attempt we have moved on from.
       if (attempt !== joinAttemptRef.current) return;
