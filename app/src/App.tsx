@@ -3,6 +3,7 @@ import type { DataConnection } from 'peerjs';
 import QRCode from 'qrcode';
 import { AppHeader } from './ui/AppHeader';
 import { Landing } from './ui/Landing';
+import { JoinScreen } from './ui/JoinScreen';
 import { HostView } from './ui/HostView';
 import { ParticipantView } from './ui/ParticipantView';
 import { Button, panelClass } from './ui/primitives';
@@ -26,7 +27,7 @@ import { FIBONACCI } from './domain/decks';
 import { decideEntry } from './domain/entry';
 import { roomIdFromCode, randomRoomCode } from './net/roomId';
 
-type Mode = 'landing' | 'host' | 'guest';
+type Mode = 'landing' | 'join' | 'host' | 'guest';
 type Terminal = 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
 
 const GUEST_CONNECT_TIMEOUT_MS = 15000;
@@ -49,32 +50,28 @@ function App() {
   const [attemptedJoin, setAttemptedJoin] = useState<
     { roomCode: string; name: string; role: 'voter' | 'observer' } | null
   >(null);
-  // Read once: localStorage is not a render-time source of truth, and the entry decision and
-  // the landing page's name prompt must agree on what this device remembered at startup.
+  // Read once: localStorage is not a render-time source of truth. It feeds the join screen and
+  // the landing page's name prompt with what this device remembered at startup.
   const [storedName] = useState(() => loadName());
   const state = useSession((s) => s.state);
   const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoJoinedRef = useRef(false);
   const joinAttemptRef = useRef(0);
 
   useEffect(() => {
     const room = initialRoom;
-    if (!room || autoJoinedRef.current) return;
+    if (!room) return;
     let superseded = false;
     void (async () => {
       const entry = decideEntry({
         urlRoomId: await roomIdFromCode(room),
         savedSessionRoomId: loadSession()?.state.roomId ?? null,
-        storedName,
       });
       if (superseded) return;
       // The link's code hashes to the saved session's room, so it is the readable name for a
       // room whose code we no longer store — leaving clears the code but keeps the session,
       // and a room id cannot be turned back into the code people type.
       if (entry === 'resume') setResumableCode((c) => c ?? room);
-      if (autoJoinedRef.current || entry !== 'auto-join') return;
-      autoJoinedRef.current = true;
-      void handleJoin({ roomCode: room, name: storedName, role: 'voter' });
+      if (entry === 'join') setMode('join');
     })();
     return () => { superseded = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -262,6 +259,15 @@ function App() {
     });
   };
 
+  // Backing out of an invite link is not leaving a room: nothing is live and nothing was joined.
+  // In particular it must not clear the saved room code, which a resumable host session still
+  // needs to rebuild a link people can actually reach.
+  const handleAbandonJoin = () => {
+    setInitialRoom(undefined);
+    syncUrl(undefined);
+    setMode('landing');
+  };
+
   const handleLeave = () => {
     clearConnectTimeout();
     teardownLive();
@@ -280,10 +286,12 @@ function App() {
   };
 
   const connected = mode === 'host' ? true : mode === 'guest' ? state !== null && !terminal : undefined;
+  const handleHome =
+    mode === 'landing' ? undefined : mode === 'join' ? handleAbandonJoin : handleLeave;
 
   return (
     <>
-      <AppHeader roomCode={displayRoomCode} connected={connected} onHome={mode !== 'landing' ? handleLeave : undefined} />
+      <AppHeader roomCode={displayRoomCode} connected={connected} onHome={handleHome} />
       {mode === 'landing' && (
         <>
           {resumable && (
@@ -320,6 +328,9 @@ function App() {
             onJoin={handleJoin}
           />
         </>
+      )}
+      {mode === 'join' && initialRoom && (
+        <JoinScreen roomCode={initialRoom} storedName={storedName} onJoin={handleJoin} />
       )}
       {mode === 'host' && state && myPeerId && (
         <HostView
