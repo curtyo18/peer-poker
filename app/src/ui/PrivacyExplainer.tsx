@@ -1,11 +1,40 @@
 import { useRef } from 'react';
+import { DisplayHeading, Kicker } from './primitives';
 
-const buttonClass =
-  'rounded-full border border-border bg-muted px-3 py-1.5 text-sm text-fg hover:text-accent transition-colors';
+const triggerClass =
+  'rounded-full border border-border bg-surface-2 px-3 py-1.5 text-sm text-muted transition-colors hover:border-accent hover:text-fg';
 const dialogClass =
-  'max-w-md w-[90vw] rounded-lg border border-border bg-bg text-fg p-0 backdrop:bg-black/50';
+  'w-[90vw] max-w-[600px] rounded-2xl border border-border bg-bg p-0 text-fg backdrop:bg-black/60';
 const closeButtonClass =
-  'rounded-full border border-border bg-muted px-3 py-1 text-sm text-fg hover:text-accent transition-colors';
+  'rounded-full border border-border bg-surface-2 px-3 py-1.5 text-sm text-fg transition-colors hover:border-accent hover:text-accent';
+
+const questions = [
+  {
+    icon: '🕸',
+    q: 'Where do the votes actually go?',
+    a: "Straight from player to player. PeerPoker connects your browsers directly (peer-to-peer) — there's no PeerPoker server in the middle collecting cards, names, or your ticket text. The table lives only in the browsers around it.",
+  },
+  {
+    icon: '📡',
+    q: 'So who’s the one third party?',
+    a: "Only Google's STUN server, and only for a moment at connect time: it helps two browsers behind home/office routers discover how to reach each other. It sees network address info (IP and port) — never a card value, a name, or anything you're estimating.",
+  },
+  {
+    icon: '🂠',
+    q: 'Are votes really hidden until reveal?',
+    a: 'Yes. Until the host reveals, other players’ cards are simply not shared to your screen — you couldn’t peek early even if you tried. And you can change your card freely up to the reveal; only your latest one counts and no one is told you switched.',
+  },
+  {
+    icon: '👁',
+    q: 'What do observers see?',
+    a: 'Observers watch the table fill and see the final reveal, but they hold no card, so they can’t nudge the estimate. Perfect for stakeholders who want to listen in.',
+  },
+  {
+    icon: '🗑',
+    q: 'How long do you keep any of this?',
+    a: 'There’s nothing to keep — no database, no accounts, no tracking cookies. When everyone leaves, the room and every card in it are simply gone.',
+  },
+];
 
 export function PrivacyExplainer() {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -19,24 +48,45 @@ export function PrivacyExplainer() {
 
   return (
     <>
-      <button type="button" className={buttonClass} onClick={open}>
+      <button type="button" className={triggerClass} onClick={open}>
         How does this work?
       </button>
       <dialog ref={dialogRef} className={dialogClass} onClick={handleBackdropClick}>
-        <section className="p-5 space-y-3">
-          <h2 className="text-lg font-semibold">How does this work? Where does my data go?</h2>
-          <p>
-            Nowhere. PeerPoker has no server storing your session. Your votes, ticket names, and
-            results are sent directly between you and the other people in the room — peer-to-peer,
-            browser to browser — and stay on your machines.
-          </p>
-          <p>
-            The only thing that briefly involves an outside service is the initial
-            &ldquo;introduction&rdquo; that lets your browsers find each other (like swapping phone
-            numbers) — and even that never sees your votes or tickets, just the connection details.
-          </p>
-          <p>No accounts. No tracking. Nothing to delete afterwards, because nothing was ever stored.</p>
-          <div className="flex justify-end">
+        <section className="max-h-[85vh] overflow-y-auto p-6 sm:p-8">
+          <div className="mb-6 text-center">
+            <div aria-hidden="true" className="text-3xl">🕵</div>
+            <DisplayHeading as="h2" className="mt-2 text-[26px] sm:text-[30px]">
+              What we hide, and when
+            </DisplayHeading>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
+              PeerPoker is built so estimates can&rsquo;t be anchored. Here&rsquo;s exactly how the
+              hidden-until-reveal guarantee works.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {questions.map((item) => (
+              <div key={item.q} className="flex gap-4 rounded-2xl border border-border bg-surface p-4">
+                <div
+                  aria-hidden="true"
+                  className="grid h-[42px] w-[42px] flex-none place-items-center rounded-[10px] border border-border bg-surface-2 text-xl"
+                >
+                  {item.icon}
+                </div>
+                <div>
+                  <h3 className="mb-1 text-[15px] font-semibold text-fg">{item.q}</h3>
+                  <p className="text-sm leading-relaxed text-muted">{item.a}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <Kicker tone="muted" className="mt-6 text-center normal-case tracking-normal text-xs">
+            Peer-to-peer &middot; one Google STUN handshake to connect &middot; no accounts, no
+            cookies, no server storing your cards.
+          </Kicker>
+
+          <div className="mt-6 flex justify-end">
             <button type="button" className={closeButtonClass} onClick={close}>
               Close
             </button>

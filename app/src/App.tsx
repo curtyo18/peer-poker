@@ -28,6 +28,7 @@ function App() {
   const [resumable, setResumable] = useState<{ roomId: string; state: SessionState } | null>(null);
   const [resumableCode, setResumableCode] = useState<string | null>(null);
   const [hostError, setHostError] = useState<'name-taken' | null>(null);
+  const [displayRoomCode, setDisplayRoomCode] = useState<string | undefined>(undefined);
   const state = useSession((s) => s.state);
   const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -71,6 +72,7 @@ function App() {
     const code = roomName.trim() ? roomName.trim() : randomRoomCode();
     const id = await roomIdFromCode(code);
     saveRoomCode(code);
+    setDisplayRoomCode(code);
     const hp = createHostPeer(id);
     setPeer(hp.peer);
     hp.peer.on('error', (e) => {
@@ -108,6 +110,7 @@ function App() {
       hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
       const code = loadRoomCode() ?? saved.state.roomId;
       setShareLink(buildLink(code));
+      setDisplayRoomCode(code);
       setMyPeerId(saved.state.hostPeerId);
       host.broadcast();
       setResumable(null);
@@ -126,6 +129,7 @@ function App() {
     { roomCode, name, role }: { roomCode: string; name: string; role: 'voter' | 'observer' },
   ) => {
     const id = await roomIdFromCode(roomCode);
+    setDisplayRoomCode(roomCode);
     const { peer, conn } = connectToHost(id);
     setPeer(peer);
     peer.on('open', (pid) => setMyPeerId(pid));
@@ -152,12 +156,15 @@ function App() {
     setQrDataUrl(null);
     setMyPeerId(undefined);
     setTerminal(null);
+    setDisplayRoomCode(undefined);
     setMode('landing');
   };
 
+  const connected = mode === 'host' ? true : mode === 'guest' ? state !== null && !terminal : undefined;
+
   return (
     <>
-      <AppHeader />
+      <AppHeader roomCode={displayRoomCode} connected={connected} onHome={mode !== 'landing' ? handleLeave : undefined} />
       {mode === 'landing' && (
         <>
           {resumable && (
