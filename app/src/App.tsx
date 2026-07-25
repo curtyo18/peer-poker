@@ -214,6 +214,9 @@ function App() {
       clearConnectTimeout();
       setTerminal(isRoomMissingError(e) ? 'not-found' : 'unreachable');
     });
+    // Whether ICE ever completes is the difference between "the host never replied" and
+    // "the two browsers could not find a path to each other".
+    conn.on('iceStateChanged', (s) => console.warn('[peerpoker] ice', s));
     const guest = makeGuestConn(conn, (s) => setTerminal(s === 'kicked' ? 'kicked' : 'ended'));
     setGuest(guest);
     conn.on('open', () => guest.join(name, role));
@@ -222,7 +225,23 @@ function App() {
       // Nothing errored, the room just never answered — a different failure from a refused
       // or impossible connection, and it points at the host rather than at this device.
       if (useSession.getState().state === null) {
-        console.error('[peerpoker] join timed out with no error', { roomCode });
+        const pc = conn.peerConnection as RTCPeerConnection | undefined;
+        console.error('[peerpoker] join timed out with no error', {
+          roomCode,
+          dataChannelOpen: conn.open,
+          ice: pc?.iceConnectionState,
+          iceGathering: pc?.iceGatheringState,
+          signaling: pc?.signalingState,
+        });
+        void pc?.getStats().then((stats) => {
+          const pairs: unknown[] = [];
+          stats.forEach((r) => {
+            if (r.type === 'candidate-pair' || r.type === 'local-candidate') {
+              pairs.push({ type: r.type, state: r.state, candidate: r.candidateType, addr: r.address });
+            }
+          });
+          console.error('[peerpoker] ice candidates', pairs);
+        });
         setTerminal('no-answer');
       }
     }, GUEST_CONNECT_TIMEOUT_MS);
