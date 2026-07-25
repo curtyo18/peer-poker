@@ -2,15 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import type { Deck } from '../domain/types';
 import { newDeck, validateDeck } from '../domain/decks';
 import { loadDecks, saveDecks } from '../store/persistence';
+import { PlayingCard } from './PlayingCard';
+import { Badge, Button, DisplayHeading, fieldClass, inputClass, labelClass } from './primitives';
 
 const dialogClass =
-  'max-w-lg w-[90vw] rounded-lg border border-border bg-bg text-fg p-0 backdrop:bg-black/50';
-const inputClass = 'rounded border border-border bg-muted px-2 py-1 text-fg';
-const buttonClass =
-  'rounded border border-border bg-muted px-3 py-1.5 text-sm text-fg hover:text-accent transition-colors';
-const smallButtonClass =
-  'rounded border border-border bg-muted px-2 py-0.5 text-xs text-fg hover:text-accent transition-colors';
-const chipClass = 'rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-fg';
+  'w-[92vw] max-w-3xl rounded-2xl border border-border bg-bg p-0 text-fg backdrop:bg-black/60';
 
 interface DeckManagerProps {
   open: boolean;
@@ -106,24 +102,34 @@ export function DeckManager({ open, onClose }: DeckManagerProps) {
 
   return (
     <dialog ref={dialogRef} className={dialogClass} onClick={handleBackdropClick} onClose={onClose}>
-      <section className="p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Manage decks</h2>
-          <button type="button" className={buttonClass} onClick={onClose}>
+      <section className="max-h-[85vh] overflow-y-auto p-6 sm:p-8">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <span className="text-[11px] font-semibold uppercase tracking-[.16em] text-accent">
+              Deck manager
+            </span>
+            <DisplayHeading as="h2" className="mt-1 text-2xl sm:text-[28px]">
+              Choose the cards on the table
+            </DisplayHeading>
+          </div>
+          <Button variant="secondary" size="sm" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
 
-        <ul className="space-y-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           {decks.map((deck) => {
             const readOnly = deck.id === 'builtin-fibonacci';
             const isEditing = editingId === deck.id;
             return (
-              <li key={deck.id} className="rounded border border-border p-3 space-y-2">
+              <div
+                key={deck.id}
+                className="rounded-2xl border border-border bg-surface p-4"
+              >
                 {isEditing ? (
-                  <div className="space-y-2">
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor={`edit-name-${deck.id}`}>Name</label>
+                  <div className="space-y-3">
+                    <div className={fieldClass}>
+                      <label className={labelClass} htmlFor={`edit-name-${deck.id}`}>Name</label>
                       <input
                         id={`edit-name-${deck.id}`}
                         className={inputClass}
@@ -131,8 +137,10 @@ export function DeckManager({ open, onClose }: DeckManagerProps) {
                         onChange={(e) => setEditName(e.target.value)}
                       />
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor={`edit-values-${deck.id}`}>Values (comma separated)</label>
+                    <div className={fieldClass}>
+                      <label className={labelClass} htmlFor={`edit-values-${deck.id}`}>
+                        Values (comma separated)
+                      </label>
                       <input
                         id={`edit-values-${deck.id}`}
                         className={inputClass}
@@ -141,71 +149,85 @@ export function DeckManager({ open, onClose }: DeckManagerProps) {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <button type="button" className={smallButtonClass} onClick={() => saveEdit(deck.id)}>
+                      <Button size="sm" variant="primary" onClick={() => saveEdit(deck.id)}>
                         Save
-                      </button>
-                      <button type="button" className={smallButtonClass} onClick={cancelEdit}>
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={cancelEdit}>
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{deck.name}</span>
-                      {!readOnly && (
-                        <div className="flex gap-2">
-                          <button type="button" className={smallButtonClass} onClick={() => startEdit(deck)}>
-                            Edit
-                          </button>
-                          <button type="button" className={smallButtonClass} onClick={() => handleDelete(deck.id)}>
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="font-display text-lg">{deck.name}</h3>
+                        <p className="mt-0.5 text-xs text-muted">{deck.values.length} cards</p>
+                      </div>
+                      {readOnly && <Badge tone="neutral">Built-in</Badge>}
                     </div>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-2">
                       {deck.values.map((v, i) => (
-                        <span key={`${deck.id}-${i}`} className={chipClass}>
-                          {v}
-                        </span>
+                        <PlayingCard key={`${deck.id}-${i}`} value={v} face="up" size="sm" />
                       ))}
                     </div>
+                    {!readOnly && (
+                      <div className="mt-4 flex gap-2 border-t border-border pt-3">
+                        <Button size="sm" variant="secondary" onClick={() => startEdit(deck)}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={() => handleDelete(deck.id)}>
+                          Delete
+                        </Button>
+                      </div>
+                    )}
                   </>
                 )}
-              </li>
+              </div>
             );
           })}
-        </ul>
 
-        <div className="space-y-2 border-t border-border pt-4">
-          <h3 className="font-medium">Add a deck</h3>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="new-deck-name">Name</label>
-            <input
-              id="new-deck-name"
-              className={inputClass}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={handleAddKeyDown}
-            />
+          <div className="flex min-h-[200px] flex-col justify-center gap-3 rounded-2xl border border-dashed border-border p-4">
+            <div>
+              <h3 className="text-sm font-semibold text-fg">+ Build a custom deck</h3>
+              <p className="mt-0.5 text-xs text-muted">
+                Any sequence of values — numbers, sizes, or your own symbols.
+              </p>
+            </div>
+            <div className={fieldClass}>
+              <label className={labelClass} htmlFor="new-deck-name">Name</label>
+              <input
+                id="new-deck-name"
+                className={inputClass}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={handleAddKeyDown}
+              />
+            </div>
+            <div className={fieldClass}>
+              <label className={labelClass} htmlFor="new-deck-values">
+                Values (comma or Enter separated)
+              </label>
+              <input
+                id="new-deck-values"
+                className={inputClass}
+                placeholder="e.g. XS, S, M, L, XL"
+                value={newValues}
+                onChange={(e) => setNewValues(e.target.value)}
+                onKeyDown={handleAddKeyDown}
+              />
+            </div>
+            <Button size="sm" variant="primary" onClick={handleAdd}>
+              Add deck
+            </Button>
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="new-deck-values">Values (comma or Enter separated)</label>
-            <input
-              id="new-deck-values"
-              className={inputClass}
-              placeholder="e.g. XS, S, M, L, XL"
-              value={newValues}
-              onChange={(e) => setNewValues(e.target.value)}
-              onKeyDown={handleAddKeyDown}
-            />
-          </div>
-          {error && <p className="text-sm text-accent">{error}</p>}
-          <button type="button" className={buttonClass} onClick={handleAdd}>
-            Add deck
-          </button>
         </div>
+
+        {error && (
+          <p className="mt-4 text-sm text-danger-text" role="alert">
+            {error}
+          </p>
+        )}
       </section>
     </dialog>
   );

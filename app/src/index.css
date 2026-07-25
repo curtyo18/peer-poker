@@ -18,6 +18,7 @@
   --color-felt-2: #123027;
   --color-felt-3: #0b1d17;
   --color-felt-panel: rgba(0, 0, 0, 0.24);
+  --color-danger-text: #ff9d8a;
 }
 
 /* Opt-in light theme — same table, daylight. */
@@ -38,6 +39,7 @@
   --color-felt-2: #245b46;
   --color-felt-3: #1b4736;
   --color-felt-panel: rgba(0, 0, 0, 0.22);
+  --color-danger-text: #b3261e;
 }
 
 /* The felt play surface reads the same "table" in both themes — it's the product's identity. */
@@ -76,6 +78,7 @@
   --color-alert-bg: var(--color-alert-bg);
   --color-alert-fg: var(--color-alert-fg);
   --color-alert-border: var(--color-alert-border);
+  --color-danger-text: var(--color-danger-text);
 
   /* No Google Fonts at runtime (hard constraint) — a serif/sans system stack stands in for
      DM Serif Display / DM Sans, preserving the display-serif + humanist-sans pairing. */
