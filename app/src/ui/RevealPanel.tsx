@@ -28,6 +28,32 @@ function Confetti() {
   );
 }
 
+// Bars per deck value — the mode in gold, the rest translucent. Reads as "2 votes for 5".
+function Distribution({ deck, counts, mode }: { deck: string[]; counts: Record<string, number>; mode: string[] }) {
+  const peak = Math.max(1, ...Object.values(counts));
+  return (
+    <div className="flex items-end justify-center gap-2 sm:gap-3">
+      {deck.map((v) => {
+        const count = counts[v] ?? 0;
+        return (
+          <div key={v} className="flex min-w-[26px] flex-1 flex-col items-center gap-1.5">
+            <span className="text-[13px] font-semibold text-felt-fg">{count || ''}</span>
+            <span className="sr-only"> votes for </span>
+            <div
+              className="w-full rounded-t-[5px] transition-[height] duration-300"
+              style={{
+                height: `${8 + (count / peak) * 64}px`,
+                background: mode.includes(v) && count > 0 ? 'var(--color-accent)' : 'rgba(255,255,255,.16)',
+              }}
+            />
+            <span className="font-display text-sm text-felt-muted">{v}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex-1 rounded-[10px] border border-felt-border bg-black/20 p-2.5 text-[13px] text-felt-muted">
@@ -71,6 +97,7 @@ export function RevealPanel({ state, isHost, myPeerId, onMutate }: RevealPanelPr
 
   if (!state.revealed) {
     const votedCount = voters.filter((p) => active.votes[p.peerId] !== undefined).length;
+    const myVote = myPeerId ? active.votes[myPeerId] : undefined;
     return (
       <Felt className="flex min-h-[220px] flex-col gap-5 p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -95,7 +122,10 @@ export function RevealPanel({ state, isHost, myPeerId, onMutate }: RevealPanelPr
             return (
               <div key={p.peerId} className="flex flex-col items-center gap-2">
                 <PlayingCard face={voted ? 'down' : 'slot'} size="md" />
-                <span className="text-[13px] text-felt-muted">{p.name}</span>
+                <span className="text-[13px] text-felt-muted">
+                  {p.name}
+                  <span className="sr-only">{voted ? ' — card played' : ' — still thinking'}</span>
+                </span>
               </div>
             );
           })}
@@ -110,8 +140,10 @@ export function RevealPanel({ state, isHost, myPeerId, onMutate }: RevealPanelPr
           </div>
         ) : me?.role === 'voter' ? (
           <p className="text-center text-[13px] text-felt-muted">
-            You played {(myPeerId && active.votes[myPeerId]) ?? 'a card'} &middot; the table flips
-            when the host reveals.
+            {myVote !== undefined
+              ? `You played ${myVote} · tap another card to change it — `
+              : 'Play a card to join the round — '}
+            the table flips when the host reveals.
           </p>
         ) : (
           <p className="text-center text-[13px] text-felt-muted">
@@ -127,7 +159,7 @@ export function RevealPanel({ state, isHost, myPeerId, onMutate }: RevealPanelPr
   return (
     <Felt className="flex flex-col gap-5 p-5 sm:p-6">
       <div>
-        <Kicker>Result &middot; {active.title || '(untitled)'}</Kicker>
+        <Kicker>The reveal</Kicker>
         <DisplayHeading as="h3" className="mt-1 text-xl sm:text-2xl">
           {active.title || '(untitled)'}
         </DisplayHeading>
@@ -140,11 +172,15 @@ export function RevealPanel({ state, isHost, myPeerId, onMutate }: RevealPanelPr
           return (
             <div key={p.peerId} className="flex flex-col items-center gap-2">
               <PlayingCard face="up" value={value} size="lg" highlighted={isMode} animateDelay={i * 0.08} showCorner />
-              <span className="text-[13px] text-muted">{p.name}</span>
+              <span className="text-[13px] text-felt-muted">{p.name}</span>
             </div>
           );
         })}
       </div>
+
+      {stats && revealedVoters.length > 0 && (
+        <Distribution deck={state.deck.values} counts={stats.counts} mode={stats.mode} />
+      )}
 
       {stats && (
         <div
@@ -176,10 +212,12 @@ export function RevealPanel({ state, isHost, myPeerId, onMutate }: RevealPanelPr
         </div>
       )}
 
-      {stats && (stats.min !== null || stats.max !== null) && (
+      {/* Low/high only exist for numeric decks; the mode is meaningful for any deck (T-shirt
+          sizes, custom labels), so it gets its own guard rather than riding on `min`. */}
+      {stats && (stats.mode.length > 0 || stats.min !== null) && (
         <div className="flex justify-center gap-6">
           {stats.min !== null && <StatTile label="LOW" value={stats.min} />}
-          {stats.min !== null && <StatTile label="MODE" value={stats.mode[0] ?? '—'} />}
+          {stats.mode.length > 0 && <StatTile label="MODE" value={stats.mode[0]} />}
           {stats.max !== null && <StatTile label="HIGH" value={stats.max} />}
         </div>
       )}

@@ -5,7 +5,6 @@ import { Agenda } from './Agenda';
 import { RevealPanel } from './RevealPanel';
 import { ParticipantList } from './ParticipantList';
 import { ResultsExport } from './ResultsExport';
-import { ConnState } from './ConnState';
 import { CardHand } from './CardHand';
 import { Button, DisplayHeading, Felt, Kicker, Panel } from './primitives';
 
@@ -75,7 +74,6 @@ export function HostView({ state, shareLink, roomCode, qrDataUrl, myPeerId, onLe
                 <span className="text-xs text-muted">Scan to join on your phone</span>
               </div>
             )}
-            <ConnState mode="host" terminal={null} onLeave={onLeave} />
           </Panel>
 
           <Agenda state={state} onMutate={onMutate} />
