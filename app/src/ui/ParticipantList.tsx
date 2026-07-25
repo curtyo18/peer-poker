@@ -1,9 +1,5 @@
 import type { SessionState } from '../domain/types';
-
-const sectionClass = 'rounded-lg border border-border bg-muted p-4 space-y-3';
-const rowClass = 'flex items-center justify-between gap-2 text-sm text-fg';
-const smallButtonClass =
-  'rounded border border-border bg-bg px-2 py-0.5 text-xs text-fg hover:text-accent transition-colors';
+import { Avatar, Badge, Button, Panel, SectionHeading, StatusDot } from './primitives';
 
 interface ParticipantListProps {
   state: SessionState;
@@ -13,34 +9,47 @@ interface ParticipantListProps {
 
 export function ParticipantList({ state, isHost, onKick }: ParticipantListProps) {
   const active = state.items.find((i) => i.id === state.activeItemId) ?? null;
+  const votingLive = active !== null && !state.revealed;
 
   return (
-    <section className={sectionClass}>
-      <h2 className="text-lg font-semibold">Participants</h2>
-      <ul className="space-y-1">
+    <Panel>
+      <SectionHeading
+        title={
+          <>
+            Table &middot; <span className="font-normal text-muted">{state.participants.length} seated</span>
+          </>
+        }
+      />
+      <ul className="space-y-1.5">
         {state.participants.map((p) => {
-          const voted = !state.revealed && active ? active.votes[p.peerId] !== undefined : false;
+          const voted = votingLive && active!.votes[p.peerId] !== undefined;
           return (
-            <li key={p.peerId} className={rowClass}>
-              <span className="flex items-center gap-2">
-                <span
-                  aria-hidden="true"
-                  className={`inline-block h-2 w-2 rounded-full ${p.connected ? 'bg-accent' : 'bg-border'}`}
+            <li key={p.peerId} className="flex items-center gap-2.5 py-0.5">
+              <span className="relative inline-flex">
+                <Avatar name={p.name} />
+                <StatusDot
+                  tone={p.connected ? 'success' : 'muted'}
+                  glow={false}
+                  className="absolute -bottom-0.5 -right-0.5 ring-2 ring-surface"
                 />
-                <span>
-                  {p.name} · {p.role}
-                </span>
-                {voted && <span aria-label="voted">✓</span>}
               </span>
+              <span className="flex-1 truncate text-sm text-fg">{p.name}</span>
+              {p.role === 'observer' && <Badge tone="neutral">Observer</Badge>}
+              {votingLive && p.role === 'voter' && (
+                <Badge tone={voted ? 'success' : 'neutral'}>{voted ? 'Ready' : 'Thinking'}</Badge>
+              )}
               {isHost && p.peerId !== state.hostPeerId && (
-                <button type="button" className={smallButtonClass} onClick={() => onKick(p.peerId)}>
+                <Button size="sm" variant="ghost" onClick={() => onKick(p.peerId)}>
                   Kick
-                </button>
+                </Button>
               )}
             </li>
           );
         })}
+        {state.participants.length === 0 && (
+          <li className="text-sm text-muted">Nobody&rsquo;s here yet.</li>
+        )}
       </ul>
-    </section>
+    </Panel>
   );
 }

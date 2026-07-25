@@ -1,26 +1,26 @@
 import { useState } from 'react';
-import type { SessionState } from '../domain/types';
+import type { AgendaItem, SessionState } from '../domain/types';
 import { addItem, setActive } from '../domain/hostActions';
-
-const sectionClass = 'rounded-lg border border-border bg-muted p-4 space-y-3';
-const inputClass = 'rounded border border-border bg-bg px-2 py-1 text-fg w-full';
-const buttonClass =
-  'rounded border border-border bg-bg px-3 py-1.5 text-sm text-fg hover:text-accent transition-colors';
-const smallButtonClass =
-  'rounded border border-border bg-bg px-2 py-0.5 text-xs text-fg hover:text-accent transition-colors';
-const itemClass = 'rounded border border-border p-3 space-y-2';
-const activeItemClass = 'rounded border-2 border-accent p-3 space-y-2';
+import { Button, Panel, SectionHeading, StatusDot, fieldClass, inputClass, labelClass } from './primitives';
 
 interface AgendaProps {
   state: SessionState;
   onMutate: (fn: (s: SessionState) => SessionState) => void;
 }
 
+function itemDotTone(item: AgendaItem, isActive: boolean): 'success' | 'accent' | 'muted' {
+  if (item.status === 'accepted') return 'success';
+  if (isActive) return 'accent';
+  return 'muted';
+}
+
 export function Agenda({ state, onMutate }: AgendaProps) {
   const [title, setTitle] = useState('');
+  const doneCount = state.items.filter((i) => i.status === 'accepted').length;
 
   const handleAdd: React.FormEventHandler = (e) => {
     e.preventDefault();
+    if (!title.trim()) return;
     onMutate((s) => addItem(s, title));
     setTitle('');
   };
@@ -51,61 +51,85 @@ export function Agenda({ state, onMutate }: AgendaProps) {
   };
 
   return (
-    <section className={sectionClass}>
-      <h2 className="text-lg font-semibold">Agenda</h2>
+    <Panel>
+      <SectionHeading
+        title="Agenda"
+        action={
+          <span className="text-xs text-muted">
+            {doneCount} / {state.items.length}
+          </span>
+        }
+      />
 
       <form className="flex items-end gap-2" onSubmit={handleAdd}>
-        <div className="flex flex-1 flex-col gap-1">
-          <label className="text-sm text-fg" htmlFor="agenda-title">
+        <div className={`flex-1 ${fieldClass}`}>
+          <label className={`sr-only ${labelClass}`} htmlFor="agenda-title">
             Item title
           </label>
           <input
             id="agenda-title"
             className={inputClass}
+            placeholder="New agenda item&hellip;"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
         </div>
-        <button type="submit" className={buttonClass}>
-          Add item
-        </button>
-        <button type="button" className={buttonClass} onClick={handleQuickVote}>
+        <Button type="submit" variant="secondary" size="sm">
+          Add
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onClick={handleQuickVote}>
           Quick vote
-        </button>
+        </Button>
       </form>
 
-      <ol className="space-y-2">
-        {state.items.map((item, index) => (
-          <li key={item.id} className={item.id === state.activeItemId ? activeItemClass : itemClass}>
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">{item.title || '(untitled)'}</span>
-              <span className="text-xs text-fg">
-                {item.status}
-                {item.acceptedEstimate !== null && ` · ${item.acceptedEstimate}`}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className={smallButtonClass} onClick={() => onMutate((s) => setActive(s, item.id))}>
-                Vote on this
-              </button>
-              <button type="button" className={smallButtonClass} onClick={() => moveItem(index, -1)} disabled={index === 0}>
-                Move up
-              </button>
-              <button
-                type="button"
-                className={smallButtonClass}
-                onClick={() => moveItem(index, 1)}
-                disabled={index === state.items.length - 1}
-              >
-                Move down
-              </button>
-              <button type="button" className={smallButtonClass} onClick={() => removeItem(item.id)}>
-                Remove
-              </button>
-            </div>
+      <ol className="space-y-1">
+        {state.items.map((item, index) => {
+          const isActive = item.id === state.activeItemId;
+          const dimmed = item.status === 'pending' && !isActive;
+          return (
+            <li
+              key={item.id}
+              className={`rounded-[9px] border px-2.5 py-2 ${
+                isActive ? 'border-border bg-surface-2' : 'border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <StatusDot tone={itemDotTone(item, isActive)} glow={false} />
+                <span className={`flex-1 truncate text-sm ${dimmed ? 'text-muted' : 'text-fg'}`}>
+                  {item.title || '(untitled)'}
+                </span>
+                {item.acceptedEstimate !== null && (
+                  <span className="font-display text-accent">{item.acceptedEstimate}</span>
+                )}
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                <Button size="sm" variant="ghost" onClick={() => onMutate((s) => setActive(s, item.id))}>
+                  Vote on this
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => moveItem(index, -1)} disabled={index === 0}>
+                  Move up
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => moveItem(index, 1)}
+                  disabled={index === state.items.length - 1}
+                >
+                  Move down
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => removeItem(item.id)}>
+                  Remove
+                </Button>
+              </div>
+            </li>
+          );
+        })}
+        {state.items.length === 0 && (
+          <li className="rounded-[9px] border border-dashed border-border px-2.5 py-3 text-center text-sm text-muted">
+            No items yet &mdash; add one above.
           </li>
-        ))}
+        )}
       </ol>
-    </section>
+    </Panel>
   );
 }
