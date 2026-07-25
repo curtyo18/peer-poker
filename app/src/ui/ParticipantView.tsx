@@ -9,20 +9,35 @@ import { Avatar, Button, DisplayHeading, Felt, Kicker, StatusDot, panelClass } f
 interface ParticipantViewProps {
   state: SessionState | null;
   myPeerId: string | undefined;
-  terminal: 'kicked' | 'ended' | 'unreachable' | null;
+  terminal: 'kicked' | 'ended' | 'unreachable' | 'not-found' | null;
+  roomCode?: string;
+  onHostRoom?: () => void;
   onLeave: () => void;
 }
 
 const noop = () => { /* guests cannot mutate session state */ };
 
-export function ParticipantView({ state, myPeerId, terminal, onLeave }: ParticipantViewProps) {
+export function ParticipantView({
+  state,
+  myPeerId,
+  terminal,
+  roomCode,
+  onHostRoom,
+  onLeave,
+}: ParticipantViewProps) {
   const mainClass = 'mx-auto flex max-w-[760px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8';
 
   if (!state) {
     return (
       <main className={mainClass}>
         {terminal ? (
-          <ConnState mode="guest" terminal={terminal} onLeave={onLeave} />
+          <ConnState
+            mode="guest"
+            terminal={terminal}
+            roomCode={roomCode}
+            onHostRoom={onHostRoom}
+            onLeave={onLeave}
+          />
         ) : (
           <div className={`${panelClass} flex items-center justify-center`}>
             <ConnState mode="guest" terminal={null} onLeave={onLeave} />

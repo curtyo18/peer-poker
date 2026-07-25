@@ -52,11 +52,13 @@ function HeroFan() {
 
 interface LandingProps {
   initialRoom?: string;
+  /** Arrived on a room link with no name saved on this device — that name is all we need. */
+  needsName?: boolean;
   onHost: (args: { deck: Deck; name: string; hostVotes: boolean; roomName: string }) => void;
   onJoin: (args: { roomCode: string; name: string; role: 'voter' | 'observer' }) => void;
 }
 
-export function Landing({ initialRoom, onHost, onJoin }: LandingProps) {
+export function Landing({ initialRoom, needsName = false, onHost, onJoin }: LandingProps) {
   const [decks, setDecks] = useState<Deck[]>(() => loadDecks());
   const [deckManagerOpen, setDeckManagerOpen] = useState(false);
 
@@ -193,12 +195,22 @@ export function Landing({ initialRoom, onHost, onJoin }: LandingProps) {
           </Button>
         </form>
 
-        <form className={`${panelClass} space-y-4`} onSubmit={handleJoinSubmit}>
+        <form
+          className={`${panelClass} space-y-4 ${needsName ? 'border-accent' : ''}`}
+          onSubmit={handleJoinSubmit}
+        >
           <div>
             <Kicker>Join</Kicker>
             <DisplayHeading as="h2" className="mt-1 text-2xl">
-              Join a session
+              {needsName ? 'What should we call you?' : 'Join a session'}
             </DisplayHeading>
+            {needsName && (
+              <p className="mt-2 text-sm text-muted">
+                You&rsquo;ve been invited to room{' '}
+                <span className="font-semibold text-fg">{initialRoom?.toUpperCase()}</span>. Add a
+                name so the table knows who&rsquo;s playing — we&rsquo;ll remember it next time.
+              </p>
+            )}
           </div>
 
           <div className={fieldClass}>
@@ -219,6 +231,7 @@ export function Landing({ initialRoom, onHost, onJoin }: LandingProps) {
               className={inputClass}
               value={joinName}
               onChange={(e) => setJoinName(e.target.value)}
+              autoFocus={needsName}
               required
             />
           </div>

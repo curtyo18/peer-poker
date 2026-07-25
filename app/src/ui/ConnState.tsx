@@ -17,19 +17,38 @@ const terminalCopy = {
     body:
       'This network may be blocking peer-to-peer connections (no relay server is used, by design). Try a different network or a phone hotspot.',
   },
+  'not-found': {
+    tone: 'neutral' as const,
+    title: 'Nobody’s hosting that room',
+    body:
+      'The room only exists while its host has it open, so this one has either ended or has not started yet. Check the code for a typo — or open the room yourself and share the link.',
+  },
 };
 
 interface ConnStateProps {
   mode: 'host' | 'guest';
-  terminal: 'kicked' | 'ended' | 'unreachable' | null;
+  terminal: 'kicked' | 'ended' | 'unreachable' | 'not-found' | null;
   connected?: boolean;
+  roomCode?: string;
+  onHostRoom?: () => void;
   onLeave: () => void;
 }
 
-export function ConnState({ mode, terminal, connected = false, onLeave }: ConnStateProps) {
+export function ConnState({
+  mode,
+  terminal,
+  connected = false,
+  roomCode,
+  onHostRoom,
+  onLeave,
+}: ConnStateProps) {
   if (terminal) {
     const copy = terminalCopy[terminal];
     const isAlert = copy.tone === 'alert';
+    const title =
+      terminal === 'not-found' && roomCode
+        ? `Nobody’s hosting ${roomCode.toUpperCase()}`
+        : copy.title;
     return (
       <section
         className={
@@ -40,12 +59,17 @@ export function ConnState({ mode, terminal, connected = false, onLeave }: ConnSt
         role="alert"
       >
         <DisplayHeading as="h2" className="text-xl">
-          {copy.title}
+          {title}
         </DisplayHeading>
         <p className={`mt-2 text-sm leading-relaxed ${isAlert ? 'text-alert-fg/90' : 'text-muted'}`}>
           {copy.body}
         </p>
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
+          {terminal === 'not-found' && onHostRoom && (
+            <Button variant="primary" onClick={onHostRoom}>
+              Start this room myself
+            </Button>
+          )}
           <Button variant={isAlert ? 'felt' : 'secondary'} onClick={onLeave}>
             Back to start
           </Button>
