@@ -17,6 +17,12 @@ const terminalCopy = {
     body:
       'This network may be blocking peer-to-peer connections (no relay server is used, by design). Try a different network or a phone hotspot.',
   },
+  'no-answer': {
+    tone: 'neutral' as const,
+    title: 'The room didn’t answer',
+    body:
+      'We reached the network but got no reply from the host. Their tab may have gone to sleep or dropped its connection — ask them to reload the room, then try joining again.',
+  },
   'not-found': {
     tone: 'neutral' as const,
     title: 'Nobody’s hosting that room',
@@ -26,7 +32,7 @@ const terminalCopy = {
 };
 
 interface ConnStateProps {
-  terminal: 'kicked' | 'ended' | 'unreachable' | 'not-found' | null;
+  terminal: 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
   connected?: boolean;
   roomCode?: string;
   onHostRoom?: () => void;

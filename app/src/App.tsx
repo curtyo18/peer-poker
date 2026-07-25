@@ -26,7 +26,7 @@ import { decideEntry } from './domain/entry';
 import { roomIdFromCode, randomRoomCode } from './net/roomId';
 
 type Mode = 'landing' | 'host' | 'guest';
-type Terminal = 'kicked' | 'ended' | 'unreachable' | 'not-found' | null;
+type Terminal = 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
 
 const GUEST_CONNECT_TIMEOUT_MS = 15000;
 
@@ -131,11 +131,19 @@ function App() {
     const hp = createHostPeer(id);
     setPeer(hp.peer);
     hp.peer.on('error', (e) => {
-      if ((e as { type?: string }).type === 'unavailable-id') {
+      const { type, message } = e as { type?: string; message?: string };
+      console.error('[peerpoker] host peer error', { type, message, code });
+      if (type === 'unavailable-id') {
         setHostError('name-taken');
         teardownLive();
         setMode('landing');
       }
+    });
+    // A peer that loses the broker keeps its open connections but stops being reachable, so
+    // the room looks fine to the host while nobody new can join it.
+    hp.peer.on('disconnected', () => {
+      console.warn('[peerpoker] host lost the signalling broker — reconnecting');
+      try { hp.peer.reconnect(); } catch { /* destroyed peer: nothing to reconnect */ }
     });
     hp.ready.then((assignedId) => {
       useSession.getState().initHost(assignedId, deck, hostVotes);
@@ -199,6 +207,10 @@ function App() {
     peer.on('error', (e) => {
       // A torn-down peer can still emit; ignore anything from an attempt we have moved on from.
       if (attempt !== joinAttemptRef.current) return;
+      const { type, message } = e as { type?: string; message?: string };
+      // The type is the only thing that says *why* a join failed; without it every failure
+      // looks alike and is undiagnosable from a bug report.
+      console.error('[peerpoker] join failed', { type, message, roomCode });
       clearConnectTimeout();
       setTerminal(isRoomMissingError(e) ? 'not-found' : 'unreachable');
     });
@@ -207,7 +219,12 @@ function App() {
     conn.on('open', () => guest.join(name, role));
     setMode('guest');
     connectTimeoutRef.current = setTimeout(() => {
-      if (useSession.getState().state === null) setTerminal('unreachable');
+      // Nothing errored, the room just never answered — a different failure from a refused
+      // or impossible connection, and it points at the host rather than at this device.
+      if (useSession.getState().state === null) {
+        console.error('[peerpoker] join timed out with no error', { roomCode });
+        setTerminal('no-answer');
+      }
     }, GUEST_CONNECT_TIMEOUT_MS);
   };
 

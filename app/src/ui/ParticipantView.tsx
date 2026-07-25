@@ -9,7 +9,7 @@ import { Avatar, Button, DisplayHeading, Felt, Kicker, StatusDot, panelClass } f
 interface ParticipantViewProps {
   state: SessionState | null;
   myPeerId: string | undefined;
-  terminal: 'kicked' | 'ended' | 'unreachable' | 'not-found' | null;
+  terminal: 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
   roomCode?: string;
   onHostRoom?: () => void;
   onLeave: () => void;
