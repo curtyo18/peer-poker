@@ -92,6 +92,9 @@
   --color-felt-panel: rgba(0, 0, 0, 0.24);
   --color-felt-fg: #f4ecd8;
   --color-felt-muted: #a6bbab;
+  /* The hero caption sits on the felt and reads as part of the table, not as UI chrome —
+     the handoff tints it green where --color-felt-muted stays neutral grey. */
+  --color-felt-caption: #5f9c78;
   --color-felt-border: #2c4c40;
   --color-felt-accent: #d9b45b;
   --color-felt-accent-fg: #20321e;
@@ -141,6 +144,7 @@
   --color-felt-3: var(--color-felt-3);
   --color-felt-fg: var(--color-felt-fg);
   --color-felt-muted: var(--color-felt-muted);
+  --color-felt-caption: var(--color-felt-caption);
   --color-felt-border: var(--color-felt-border);
   --color-felt-panel: var(--color-felt-panel);
   --color-card-accent: var(--color-card-accent);

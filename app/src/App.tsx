@@ -6,7 +6,6 @@ import { Landing } from './ui/Landing';
 import { JoinScreen } from './ui/JoinScreen';
 import { HostView } from './ui/HostView';
 import { ParticipantView } from './ui/ParticipantView';
-import { Button, panelClass } from './ui/primitives';
 import { useSession } from './store/session';
 import type { Deck, SessionState } from './domain/types';
 import { createHostPeer, connectToHost, isRoomMissingError } from './net/peer';
@@ -34,8 +33,9 @@ const GUEST_CONNECT_TIMEOUT_MS = 15000;
 
 function App() {
   const [mode, setMode] = useState<Mode>('landing');
-  // Read on the first render, not in an effect: Landing seeds its room input from this once,
-  // so arriving a render late leaves the field empty on a shared link.
+  // Read on the first render, not in an effect: the entry decision below and the JoinScreen it
+  // routes to both read this, so arriving a render late shows the landing page for a beat on
+  // what is unambiguously an invite link.
   const [initialRoom, setInitialRoom] = useState<string | undefined>(
     () => new URLSearchParams(location.search).get('room') ?? undefined,
   );
@@ -50,8 +50,8 @@ function App() {
   const [attemptedJoin, setAttemptedJoin] = useState<
     { roomCode: string; name: string; role: 'voter' | 'observer' } | null
   >(null);
-  // Read once: localStorage is not a render-time source of truth. It feeds the join screen and
-  // the landing page's name prompt with what this device remembered at startup.
+  // Read once: localStorage is not a render-time source of truth. It tells the join screen what
+  // this device remembered at startup, so a returning guest confirms a name instead of typing it.
   const [storedName] = useState(() => loadName());
   const state = useSession((s) => s.state);
   const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -294,23 +294,6 @@ function App() {
       <AppHeader roomCode={displayRoomCode} connected={connected} onHome={handleHome} />
       {mode === 'landing' && (
         <>
-          {resumable && (
-            <div className="mx-auto mt-6 max-w-[1200px] px-4 sm:px-6">
-              <div className={`flex flex-wrap items-center justify-between gap-4 ${panelClass}`}>
-                <span className="text-sm text-fg">
-                  You have a prior host session for room &ldquo;{resumableCode ?? resumable.roomId}&rdquo;.
-                </span>
-                <div className="flex gap-2">
-                  <Button variant="primary" size="sm" onClick={handleResume}>
-                    Resume session
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={handleDiscard}>
-                    Discard
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
           {hostError === 'name-taken' && (
             <div className="mx-auto mt-6 max-w-[1200px] px-4 sm:px-6">
               <div
@@ -322,10 +305,17 @@ function App() {
             </div>
           )}
           <Landing
-            initialRoom={initialRoom}
-            needsName={!!initialRoom && storedName.trim() === ''}
             onHost={handleHost}
-            onJoin={handleJoin}
+            onEnterCode={(code) => { setInitialRoom(code); setMode('join'); }}
+            resume={
+              resumable
+                ? {
+                    roomLabel: resumableCode ?? resumable.roomId,
+                    onResume: handleResume,
+                    onDiscard: handleDiscard,
+                  }
+                : undefined
+            }
           />
         </>
       )}
