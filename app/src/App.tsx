@@ -4,6 +4,7 @@ import { AppHeader } from './ui/AppHeader';
 import { Landing } from './ui/Landing';
 import { HostView } from './ui/HostView';
 import { ParticipantView } from './ui/ParticipantView';
+import { Button, panelClass } from './ui/primitives';
 import { useSession } from './store/session';
 import type { Deck, SessionState } from './domain/types';
 import { createHostPeer, connectToHost } from './net/peer';
@@ -168,32 +169,30 @@ function App() {
       {mode === 'landing' && (
         <>
           {resumable && (
-            <div className="mx-auto mt-4 flex max-w-2xl items-center justify-between gap-4 rounded-lg border border-border bg-muted p-4 text-fg">
-              <span>You have a prior host session for room &ldquo;{resumableCode ?? resumable.roomId}&rdquo;.</span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="rounded border border-border bg-bg px-3 py-1.5 text-sm text-fg hover:text-accent transition-colors"
-                  onClick={handleResume}
-                >
-                  Resume session
-                </button>
-                <button
-                  type="button"
-                  className="rounded border border-border bg-bg px-3 py-1.5 text-sm text-fg hover:text-accent transition-colors"
-                  onClick={handleDiscard}
-                >
-                  Discard
-                </button>
+            <div className="mx-auto mt-6 max-w-[1200px] px-4 sm:px-6">
+              <div className={`flex flex-wrap items-center justify-between gap-4 ${panelClass}`}>
+                <span className="text-sm text-fg">
+                  You have a prior host session for room &ldquo;{resumableCode ?? resumable.roomId}&rdquo;.
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="primary" size="sm" onClick={handleResume}>
+                    Resume session
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={handleDiscard}>
+                    Discard
+                  </Button>
+                </div>
               </div>
             </div>
           )}
           {hostError === 'name-taken' && (
-            <div
-              role="alert"
-              className="mx-auto mt-4 max-w-2xl rounded-lg border border-border bg-muted p-4 text-fg"
-            >
-              That room name is already in use right now — pick another.
+            <div className="mx-auto mt-6 max-w-[1200px] px-4 sm:px-6">
+              <div
+                role="alert"
+                className="rounded-2xl border border-alert-border bg-alert-bg px-5 py-4 text-sm text-alert-fg"
+              >
+                That room name is already in use right now — pick another.
+              </div>
             </div>
           )}
           <Landing initialRoom={initialRoom} onHost={handleHost} onJoin={handleJoin} />
