@@ -28,6 +28,8 @@ interface PlayingCardProps {
   ariaPressed?: boolean;
   caption?: ReactNode;
   showCorner?: boolean;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 export function PlayingCard({
@@ -46,6 +48,8 @@ export function PlayingCard({
   ariaPressed,
   caption,
   showCorner = false,
+  onMouseEnter,
+  onMouseLeave,
 }: PlayingCardProps) {
   const dims = sizes[size];
 
@@ -103,10 +107,14 @@ export function PlayingCard({
       <button
         type="button"
         onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onFocus={onMouseEnter}
+        onBlur={onMouseLeave}
         disabled={disabled}
         aria-label={ariaLabel}
         aria-pressed={ariaPressed}
-        className={`cursor-pointer transition-transform duration-150 ease-out disabled:cursor-not-allowed ${className}`}
+        className={`cursor-pointer disabled:cursor-not-allowed ${className}`}
         style={baseStyle}
       >
         {content}
