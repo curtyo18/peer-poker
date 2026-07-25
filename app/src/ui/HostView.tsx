@@ -7,21 +7,18 @@ import { ParticipantList } from './ParticipantList';
 import { ResultsExport } from './ResultsExport';
 import { ConnState } from './ConnState';
 import { CardHand } from './CardHand';
-
-const mainClass = 'mx-auto flex max-w-2xl flex-col gap-4 p-4';
-const sectionClass = 'rounded-lg border border-border bg-muted p-4 space-y-3';
-const buttonClass =
-  'rounded border border-border bg-bg px-3 py-1.5 text-sm text-fg hover:text-accent transition-colors';
+import { Button, DisplayHeading, Felt, Kicker, Panel } from './primitives';
 
 interface HostViewProps {
   state: SessionState;
   shareLink: string;
+  roomCode: string | undefined;
   qrDataUrl: string | null;
   myPeerId: string;
   onLeave: () => void;
 }
 
-export function HostView({ state, shareLink, qrDataUrl, myPeerId, onLeave }: HostViewProps) {
+export function HostView({ state, shareLink, roomCode, qrDataUrl, myPeerId, onLeave }: HostViewProps) {
   const onMutate = (fn: (s: SessionState) => SessionState) => {
     useSession.getState().update(fn);
     getHost()?.broadcast();
@@ -44,39 +41,65 @@ export function HostView({ state, shareLink, qrDataUrl, myPeerId, onLeave }: Hos
   };
 
   return (
-    <main className={mainClass}>
-      <section className={sectionClass}>
-        <h2 className="text-lg font-semibold">Waiting for participants&hellip;</h2>
-        <p className="break-all text-sm text-fg">{shareLink}</p>
-        <div className="flex items-center gap-3">
-          <button type="button" className={buttonClass} onClick={handleCopyLink}>
-            Copy link
-          </button>
-          <button type="button" className={buttonClass} onClick={onLeave}>
-            Leave
-          </button>
+    <main className="mx-auto flex max-w-[1200px] flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
+      <div>
+        <Kicker>Host console</Kicker>
+        <DisplayHeading as="h2" className="mt-1 text-2xl sm:text-[28px]">
+          Room {roomCode?.toUpperCase() ?? state.roomId}
+        </DisplayHeading>
+      </div>
+
+      <div className="grid items-start gap-5 lg:grid-cols-[300px_1fr]">
+        <aside className="flex flex-col gap-5">
+          <Panel>
+            <Kicker className="mb-1">Invite</Kicker>
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-display text-3xl tracking-[.06em] text-accent">
+                {roomCode?.toUpperCase() ?? state.roomId}
+              </span>
+            </div>
+            <p className="break-all text-xs text-muted">{shareLink}</p>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={handleCopyLink}>
+                Copy link
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onLeave}>
+                Leave
+              </Button>
+            </div>
+            {qrDataUrl && (
+              <div className="flex flex-col items-center gap-2 pt-1">
+                <div className="rounded-[14px] bg-white p-2.5 shadow-[0_12px_30px_-12px_rgba(0,0,0,.5)]">
+                  <img src={qrDataUrl} alt="QR code for room link" width={140} height={140} />
+                </div>
+                <span className="text-xs text-muted">Scan to join on your phone</span>
+              </div>
+            )}
+            <ConnState mode="host" terminal={null} onLeave={onLeave} />
+          </Panel>
+
+          <Agenda state={state} onMutate={onMutate} />
+          <ParticipantList state={state} isHost onKick={(peerId) => getHost()?.kick(peerId)} />
+        </aside>
+
+        <div className="flex flex-col gap-5">
+          <RevealPanel state={state} isHost myPeerId={myPeerId} onMutate={onMutate} />
+
+          {state.hostVotes && (
+            <Felt className="p-5 sm:p-6">
+              <Kicker className="mb-3">Your vote</Kicker>
+              <CardHand
+                deck={state.deck}
+                myVote={activeItem?.votes[myPeerId]}
+                disabled={!activeItem || state.revealed}
+                onVote={handleVote}
+              />
+            </Felt>
+          )}
+
+          <ResultsExport state={state} onEnd={handleEnd} />
         </div>
-        {qrDataUrl && <img src={qrDataUrl} alt="QR code for room link" width={180} height={180} />}
-        <ConnState mode="host" terminal={null} onLeave={onLeave} />
-      </section>
-
-      <Agenda state={state} onMutate={onMutate} />
-      <RevealPanel state={state} isHost onMutate={onMutate} />
-      <ParticipantList state={state} isHost onKick={(peerId) => getHost()?.kick(peerId)} />
-
-      {state.hostVotes && (
-        <section className={sectionClass}>
-          <h2 className="text-lg font-semibold">Your vote</h2>
-          <CardHand
-            deck={state.deck}
-            myVote={activeItem?.votes[myPeerId]}
-            disabled={!activeItem || state.revealed}
-            onVote={handleVote}
-          />
-        </section>
-      )}
-
-      <ResultsExport state={state} onEnd={handleEnd} />
+      </div>
     </main>
   );
 }

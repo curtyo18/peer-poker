@@ -22,10 +22,11 @@ const terminalCopy = {
 interface ConnStateProps {
   mode: 'host' | 'guest';
   terminal: 'kicked' | 'ended' | 'unreachable' | null;
+  connected?: boolean;
   onLeave: () => void;
 }
 
-export function ConnState({ mode, terminal, onLeave }: ConnStateProps) {
+export function ConnState({ mode, terminal, connected = false, onLeave }: ConnStateProps) {
   if (terminal) {
     const copy = terminalCopy[terminal];
     const isAlert = copy.tone === 'alert';
@@ -53,7 +54,7 @@ export function ConnState({ mode, terminal, onLeave }: ConnStateProps) {
     );
   }
 
-  if (mode === 'guest') {
+  if (mode === 'guest' && !connected) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted" role="status">
         <span

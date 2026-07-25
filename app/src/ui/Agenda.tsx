@@ -61,25 +61,27 @@ export function Agenda({ state, onMutate }: AgendaProps) {
         }
       />
 
-      <form className="flex items-end gap-2" onSubmit={handleAdd}>
-        <div className={`flex-1 ${fieldClass}`}>
+      <form className="flex flex-col gap-2" onSubmit={handleAdd}>
+        <div className={fieldClass}>
           <label className={`sr-only ${labelClass}`} htmlFor="agenda-title">
             Item title
           </label>
           <input
             id="agenda-title"
             className={inputClass}
-            placeholder="New agenda item&hellip;"
+            placeholder="New agenda item…"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
         </div>
-        <Button type="submit" variant="secondary" size="sm">
-          Add
-        </Button>
-        <Button type="button" variant="secondary" size="sm" onClick={handleQuickVote}>
-          Quick vote
-        </Button>
+        <div className="flex gap-2">
+          <Button type="submit" variant="secondary" size="sm" className="flex-1">
+            Add
+          </Button>
+          <Button type="button" variant="secondary" size="sm" className="flex-1" onClick={handleQuickVote}>
+            Quick vote
+          </Button>
+        </div>
       </form>
 
       <ol className="space-y-1">

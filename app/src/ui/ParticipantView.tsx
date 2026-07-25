@@ -4,9 +4,7 @@ import { RevealPanel } from './RevealPanel';
 import { ParticipantList } from './ParticipantList';
 import { ConnState } from './ConnState';
 import { CardHand } from './CardHand';
-
-const mainClass = 'mx-auto flex max-w-2xl flex-col gap-4 p-4';
-const sectionClass = 'rounded-lg border border-border bg-muted p-4 space-y-3';
+import { Avatar, Button, DisplayHeading, Felt, Kicker, StatusDot, panelClass } from './primitives';
 
 interface ParticipantViewProps {
   state: SessionState | null;
@@ -18,50 +16,86 @@ interface ParticipantViewProps {
 const noop = () => { /* guests cannot mutate session state */ };
 
 export function ParticipantView({ state, myPeerId, terminal, onLeave }: ParticipantViewProps) {
-  if (!state && !terminal) {
-    return (
-      <main className={mainClass}>
-        <section className={sectionClass}>
-          <h2 className="text-lg font-semibold">Connecting&hellip;</h2>
-        </section>
-        <ConnState mode="guest" terminal={terminal} onLeave={onLeave} />
-      </main>
-    );
-  }
+  const mainClass = 'mx-auto flex max-w-[760px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8';
 
   if (!state) {
     return (
       <main className={mainClass}>
-        <ConnState mode="guest" terminal={terminal} onLeave={onLeave} />
+        {terminal ? (
+          <ConnState mode="guest" terminal={terminal} onLeave={onLeave} />
+        ) : (
+          <div className={`${panelClass} flex items-center justify-center`}>
+            <ConnState mode="guest" terminal={null} onLeave={onLeave} />
+          </div>
+        )}
       </main>
     );
   }
 
   const me = state.participants.find((p) => p.peerId === myPeerId);
   const activeItem = state.items.find((i) => i.id === state.activeItemId) ?? null;
+  const voters = state.participants.filter((p) => p.role === 'voter');
+  const votedCount = activeItem ? voters.filter((p) => activeItem.votes[p.peerId] !== undefined).length : 0;
+
+  const handleToggleRole = () => {
+    if (!me) return;
+    getGuest()?.changeRole(me.role === 'observer' ? 'voter' : 'observer');
+  };
 
   return (
     <main className={mainClass}>
-      <section className={sectionClass}>
-        <h2 className="text-lg font-semibold">{activeItem?.title || 'No item selected'}</h2>
-      </section>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
+        <div className="flex items-center">
+          {state.participants.map((p) => (
+            <Avatar key={p.peerId} name={p.name} isSelf={p.peerId === myPeerId} stacked />
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          {me && (
+            <Button size="sm" variant="secondary" onClick={handleToggleRole}>
+              {me.role === 'observer' ? 'Take a seat' : '👁 Observe instead'}
+            </Button>
+          )}
+          <span className="flex items-center gap-2 text-xs text-muted">
+            <StatusDot tone="accent" />
+            {votedCount} of {voters.length} in
+          </span>
+        </div>
+      </div>
 
-      <RevealPanel state={state} isHost={false} onMutate={noop} />
-      <ParticipantList state={state} isHost={false} onKick={() => { /* guests cannot kick */ }} />
+      <RevealPanel state={state} isHost={false} myPeerId={myPeerId} onMutate={noop} />
+
+      {me?.role === 'observer' && activeItem && !state.revealed && (
+        <Felt className="p-8 text-center">
+          <div aria-hidden="true" className="text-3xl">👁</div>
+          <DisplayHeading as="h3" className="mt-2 text-xl">
+            You&rsquo;re observing this round
+          </DisplayHeading>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-felt-muted">
+            Observers see the table and the reveal but don&rsquo;t play a card, so they never sway
+            the estimate. Take a seat to join the next hand.
+          </p>
+          <Button variant="primary" className="mt-4" onClick={handleToggleRole}>
+            Take a seat
+          </Button>
+        </Felt>
+      )}
 
       {me?.role === 'voter' && (
-        <section className={sectionClass}>
-          <h2 className="text-lg font-semibold">Your vote</h2>
+        <Felt className="p-5 sm:p-6">
+          <Kicker className="mb-3">Your vote</Kicker>
           <CardHand
             deck={state.deck}
             myVote={myPeerId ? activeItem?.votes[myPeerId] : undefined}
             disabled={!activeItem || state.revealed}
             onVote={(value) => getGuest()?.vote(value)}
           />
-        </section>
+        </Felt>
       )}
 
-      <ConnState mode="guest" terminal={terminal} onLeave={onLeave} />
+      <ParticipantList state={state} isHost={false} onKick={() => { /* guests cannot kick */ }} />
+
+      <ConnState mode="guest" terminal={terminal} connected onLeave={onLeave} />
     </main>
   );
 }

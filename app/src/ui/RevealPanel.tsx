@@ -40,10 +40,11 @@ function StatTile({ label, value }: { label: string; value: string }) {
 interface RevealPanelProps {
   state: SessionState;
   isHost: boolean;
+  myPeerId?: string;
   onMutate: (fn: (s: SessionState) => SessionState) => void;
 }
 
-export function RevealPanel({ state, isHost, onMutate }: RevealPanelProps) {
+export function RevealPanel({ state, isHost, myPeerId, onMutate }: RevealPanelProps) {
   const active = state.items.find((i) => i.id === state.activeItemId) ?? null;
   const stats = active ? voteStats(active.votes) : null;
   const [chosen, setChosen] = useState<string>('');
@@ -53,6 +54,7 @@ export function RevealPanel({ state, isHost, onMutate }: RevealPanelProps) {
   }, [active?.id, state.revealed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const voters = state.participants.filter((p) => p.role === 'voter');
+  const me = state.participants.find((p) => p.peerId === myPeerId);
 
   if (!active) {
     return (
@@ -106,10 +108,14 @@ export function RevealPanel({ state, isHost, onMutate }: RevealPanelProps) {
               Reveal the table &rarr;
             </Button>
           </div>
+        ) : me?.role === 'voter' ? (
+          <p className="text-center text-[13px] text-felt-muted">
+            You played {(myPeerId && active.votes[myPeerId]) ?? 'a card'} &middot; the table flips
+            when the host reveals.
+          </p>
         ) : (
           <p className="text-center text-[13px] text-felt-muted">
-            You played {active.votes[state.hostPeerId] ?? 'a card'} &middot; the table flips when the
-            host reveals.
+            Waiting for the host to reveal.
           </p>
         )}
       </Felt>

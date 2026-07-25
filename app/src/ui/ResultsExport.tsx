@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import type { SessionState } from '../domain/types';
-
-const sectionClass = 'rounded-lg border border-border bg-muted p-4 space-y-3';
-const buttonClass =
-  'rounded border border-border bg-bg px-3 py-1.5 text-sm text-fg hover:text-accent transition-colors';
-const tableClass = 'w-full text-sm text-fg';
+import { Button, Panel, SectionHeading } from './primitives';
 
 interface ResultsExportProps {
   state: SessionState;
@@ -41,53 +37,60 @@ export function ResultsExport({ state, onEnd }: ResultsExportProps) {
     downloadBlob(JSON.stringify(rows, null, 2), 'application/json', 'peerpoker-results.json');
   };
 
-  const handleEnd = () => {
-    onEnd();
-  };
-
   return (
-    <section className={sectionClass}>
-      <h2 className="text-lg font-semibold">End &amp; export</h2>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={buttonClass} onClick={() => setShowResults(true)}>
-          Show results
-        </button>
-        <button type="button" className={buttonClass} onClick={handleEnd}>
-          End session
-        </button>
-      </div>
+    <Panel>
+      <SectionHeading
+        title="Results & export"
+        action={
+          <Button variant="danger" size="sm" onClick={onEnd}>
+            End session
+          </Button>
+        }
+      />
+
+      {!showResults && (
+        <Button variant="secondary" size="sm" onClick={() => setShowResults(true)}>
+          Show results ({rows.length})
+        </Button>
+      )}
 
       {showResults && (
-        <div className="space-y-2">
-          <table className={tableClass}>
-            <thead>
-              <tr className="text-left">
-                <th>Item</th>
-                <th>Estimate</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={i}>
-                  <td>{r.title}</td>
-                  <td>{r.estimate}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-3">
+          {rows.length === 0 ? (
+            <p className="text-sm text-muted">No estimates accepted yet.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm text-fg">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
+                    <th className="px-3 py-2 font-medium">Item</th>
+                    <th className="px-3 py-2 font-medium">Estimate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={i} className="border-b border-border last:border-0">
+                      <td className="px-3 py-2">{r.title}</td>
+                      <td className="px-3 py-2 font-display text-accent">{r.estimate}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={buttonClass} onClick={handleCopy}>
+            <Button variant="secondary" size="sm" onClick={handleCopy}>
               Copy
-            </button>
-            <button type="button" className={buttonClass} onClick={handleDownloadCsv}>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleDownloadCsv}>
               Download CSV
-            </button>
-            <button type="button" className={buttonClass} onClick={handleDownloadJson}>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleDownloadJson}>
               Download JSON
-            </button>
+            </Button>
           </div>
         </div>
       )}
-    </section>
+    </Panel>
   );
 }

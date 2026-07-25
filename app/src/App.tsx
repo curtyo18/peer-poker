@@ -202,6 +202,7 @@ function App() {
         <HostView
           state={state}
           shareLink={shareLink}
+          roomCode={displayRoomCode}
           qrDataUrl={qrDataUrl}
           myPeerId={myPeerId}
           onLeave={handleLeave}
