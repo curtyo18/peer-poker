@@ -16,14 +16,28 @@ the room over WebRTC** and never touch a server.
 - **Yours to theme** — dark by default, switch to light any time.
 - **Export** — copy / CSV / JSON of the agreed estimates at the end.
 
+## Run it locally
+
+```bash
+cd app
+npm install
+npm run dev     # http://localhost:8000/peer-poker/
+```
+
+`npm run build` emits a static bundle to `app/dist`; `npm run test` and
+`npm run lint` cover the domain logic and code style. Deployment notes are in
+[`app/DEPLOY.md`](app/DEPLOY.md).
+
 ## Status
 
 Early build. Design in [`docs/design.md`](docs/design.md), implementation plan in
 [`docs/plan.md`](docs/plan.md), key decisions in [`docs/adr/`](docs/adr/).
 
-Private while in progress; will go public once ready.
-
 ## Stack
 
 Vite + React + TypeScript + Zustand + Tailwind (dark default, light optional) + PeerJS.
 The app lives in [`app/`](app/). See the plan for the build sequence.
+
+## License
+
+[MIT](LICENSE).
