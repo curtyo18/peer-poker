@@ -13,8 +13,8 @@ const fieldClass = 'flex flex-col gap-1';
 
 interface LandingProps {
   initialRoom?: string;
-  onHost: (args: { deck: Deck; name: string; hostVotes: boolean }) => void;
-  onJoin: (args: { roomId: string; name: string; role: 'voter' | 'observer' }) => void;
+  onHost: (args: { deck: Deck; name: string; hostVotes: boolean; roomName: string }) => void;
+  onJoin: (args: { roomCode: string; name: string; role: 'voter' | 'observer' }) => void;
 }
 
 export function Landing({ initialRoom, onHost, onJoin }: LandingProps) {
@@ -27,6 +27,7 @@ export function Landing({ initialRoom, onHost, onJoin }: LandingProps) {
   );
   const [hostName, setHostName] = useState(() => loadName());
   const [hostVotes, setHostVotes] = useState(true);
+  const [roomName, setRoomName] = useState('');
 
   const [joinName, setJoinName] = useState(() => loadName());
   const [joinRole, setJoinRole] = useState<'voter' | 'observer'>('voter');
@@ -42,13 +43,13 @@ export function Landing({ initialRoom, onHost, onJoin }: LandingProps) {
     const deck = decks.find((d) => d.id === hostDeckId) ?? FIBONACCI;
     saveName(hostName);
     saveLastDeckId(deck.id);
-    onHost({ deck, name: hostName, hostVotes });
+    onHost({ deck, name: hostName, hostVotes, roomName: roomName.trim() });
   };
 
   const handleJoinSubmit: React.FormEventHandler = (e) => {
     e.preventDefault();
     saveName(joinName);
-    onJoin({ roomId: joinRoom.trim(), name: joinName, role: joinRole });
+    onJoin({ roomCode: joinRoom.trim(), name: joinName, role: joinRole });
   };
 
   return (
@@ -78,6 +79,17 @@ export function Landing({ initialRoom, onHost, onJoin }: LandingProps) {
             required
           />
         </div>
+        <div className={fieldClass}>
+          <label className={labelClass} htmlFor="host-room-name">
+            Room name (optional — makes a reusable link)
+          </label>
+          <input
+            id="host-room-name"
+            className={inputClass}
+            value={roomName}
+            onChange={(e) => setRoomName(e.target.value)}
+          />
+        </div>
         <div className="flex items-center gap-2">
           <input
             id="host-votes"
@@ -93,7 +105,7 @@ export function Landing({ initialRoom, onHost, onJoin }: LandingProps) {
       <form className={sectionClass} onSubmit={handleJoinSubmit}>
         <h2 className="text-lg font-semibold">Join a session</h2>
         <div className={fieldClass}>
-          <label className={labelClass} htmlFor="join-room">Room code</label>
+          <label className={labelClass} htmlFor="join-room">Room name or code</label>
           <input
             id="join-room"
             className={inputClass}
