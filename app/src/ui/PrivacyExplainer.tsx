@@ -16,8 +16,8 @@ const questions = [
   },
   {
     icon: '📡',
-    q: 'So who’s the one third party?',
-    a: "Only Google's STUN server, and only for a moment at connect time: it helps two browsers behind home/office routers discover how to reach each other. It sees network address info (IP and port) — never a card value, a name, or anything you're estimating.",
+    q: 'Does anything touch a server at all?',
+    a: 'Only the introduction. Two browsers can’t find each other on their own, so a matchmaking service passes along “here’s where to reach me”, and a second one (Google’s) helps each browser work out its own address from behind a router. Both are used just while you connect, and both see only network details — never a name, a card, or a word of what you’re estimating. All of that goes straight between you.',
   },
   {
     icon: '🂠',
@@ -82,8 +82,8 @@ export function PrivacyExplainer() {
           </div>
 
           <Kicker tone="muted" className="mt-6 text-center normal-case tracking-normal text-xs">
-            Peer-to-peer &middot; one Google STUN handshake to connect &middot; no accounts, no
-            cookies, no server storing your cards.
+            Peer-to-peer &middot; servers introduce you, then step out of the way &middot; no
+            accounts, no cookies, no server storing your names or your cards.
           </Kicker>
 
           <div className="mt-6 flex justify-end">
