@@ -17,8 +17,10 @@ export function CardHand({ deck, myVote, disabled, onVote }: CardHandProps) {
   return (
     // pb-14 reserves room for the fanned cards' downward droop (bottom-anchored + positive
     // translateY), which absolute positioning otherwise excludes from this box's height.
-    <div className="pb-14" role="group" aria-label="Card hand">
-      <div className="relative mx-auto h-[220px] w-full max-w-[460px] sm:h-[250px]">
+    <div className="pb-8 sm:pb-14" role="group" aria-label="Card hand">
+      {/* The fan's per-card offsets are fixed pixel values wide enough to overflow a phone
+          viewport; scale the whole arc down on narrow screens instead of recomputing offsets. */}
+      <div className="relative mx-auto h-[170px] w-full max-w-[460px] origin-bottom scale-[0.72] sm:h-[250px] sm:scale-100">
         {deck.values.map((value, i) => {
           const offset = i - center;
           const selected = value === myVote;
