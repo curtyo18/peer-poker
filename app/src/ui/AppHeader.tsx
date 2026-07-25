@@ -34,6 +34,7 @@ export function AppHeader({ roomCode, connected = true, onHome }: AppHeaderProps
         {roomCode && (
           <div className="hidden items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 text-xs tracking-[.1em] text-muted sm:flex">
             <StatusDot tone={connected ? 'success' : 'muted'} />
+            <span className="sr-only">{connected ? 'Connected. ' : 'Not connected. '}</span>
             ROOM &middot; {roomCode.toUpperCase()}
           </div>
         )}

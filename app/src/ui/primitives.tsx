@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, CSSProperties, HTMLAttributes, ReactNode } from 'react';
 
 export const panelClass = 'rounded-2xl border border-border bg-surface p-4 sm:p-[18px]';
 export const feltClass =
@@ -6,7 +6,11 @@ export const feltClass =
 export const feltGradient = {
   background:
     'radial-gradient(120% 120% at 50% -20%, var(--color-felt-1), var(--color-felt-2) 60%, var(--color-felt-3))',
-};
+  // The felt stays dark in both themes, so re-point the accent pair at its always-gold
+  // variant for everything inside: light theme's brown accent is unreadable on green.
+  '--color-accent': 'var(--color-felt-accent)',
+  '--color-accent-fg': 'var(--color-felt-accent-fg)',
+} as CSSProperties;
 export const fieldClass = 'flex flex-col gap-1.5';
 export const labelClass = 'text-sm font-medium text-muted';
 export const inputClass =
@@ -71,9 +75,9 @@ export function Panel({ className = '', children, ...rest }: PanelProps) {
   );
 }
 
-export function Felt({ className = '', children, ...rest }: PanelProps) {
+export function Felt({ className = '', children, style, ...rest }: PanelProps) {
   return (
-    <div className={`${feltClass} ${className}`} style={feltGradient} {...rest}>
+    <div className={`${feltClass} ${className}`} style={{ ...feltGradient, ...style }} {...rest}>
       {children}
     </div>
   );
@@ -208,10 +212,14 @@ interface AvatarProps {
 export function Avatar({ name, isSelf = false, stacked = false, className = '' }: AvatarProps) {
   return (
     <span
-      className={`grid h-[30px] w-[30px] flex-none place-items-center rounded-full text-[11px] font-bold text-[#f4ecd8] ${
+      className={`grid h-[30px] w-[30px] flex-none place-items-center rounded-full text-[11px] font-bold ${
         stacked ? '-ml-2 border-2 border-felt-2 first:ml-0' : ''
       } ${className}`}
-      style={{ background: isSelf ? 'var(--color-accent)' : avatarColor(name) }}
+      style={{
+        background: isSelf ? 'var(--color-accent)' : avatarColor(name),
+        // The gold self-chip needs the dark accent ink; the muted palette chips take cream.
+        color: isSelf ? 'var(--color-accent-fg)' : 'var(--color-felt-fg)',
+      }}
       title={name}
     >
       {initials(name)}

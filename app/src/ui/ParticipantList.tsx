@@ -33,7 +33,10 @@ export function ParticipantList({ state, isHost, onKick }: ParticipantListProps)
                   className="absolute -bottom-0.5 -right-0.5 ring-2 ring-surface"
                 />
               </span>
-              <span className="flex-1 truncate text-sm text-fg">{p.name}</span>
+              <span className="flex-1 truncate text-sm text-fg">
+                {p.name}
+                {!p.connected && <span className="sr-only"> (disconnected)</span>}
+              </span>
               {p.role === 'observer' && <Badge tone="neutral">Observer</Badge>}
               {votingLive && p.role === 'voter' && (
                 <Badge tone={voted ? 'success' : 'neutral'}>{voted ? 'Ready' : 'Thinking'}</Badge>

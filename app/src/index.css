@@ -14,10 +14,6 @@
   --color-card: #f6efdd;
   --color-card-edge: #d8cca6;
   --color-card-ink: #20321e;
-  --color-felt-1: #1c4535;
-  --color-felt-2: #123027;
-  --color-felt-3: #0b1d17;
-  --color-felt-panel: rgba(0, 0, 0, 0.24);
   --color-danger-text: #ff9d8a;
 }
 
@@ -35,18 +31,24 @@
   --color-card: #fffdf6;
   --color-card-edge: #e0d5b4;
   --color-card-ink: #223018;
-  --color-felt-1: #2f6f56;
-  --color-felt-2: #245b46;
-  --color-felt-3: #1b4736;
-  --color-felt-panel: rgba(0, 0, 0, 0.22);
   --color-danger-text: #b3261e;
 }
 
-/* The felt play surface reads the same "table" in both themes — it's the product's identity. */
+/* The felt play surface reads the same "table" in both themes — it's the product's identity.
+   Because the felt stays dark, anything drawn on it needs always-light tokens: the themed
+   `--color-accent` is a dark brown in light mode and all but disappears on green. */
 :root {
+  --color-felt-1: #1c4535;
+  --color-felt-2: #123027;
+  --color-felt-3: #0b1d17;
+  --color-felt-panel: rgba(0, 0, 0, 0.24);
   --color-felt-fg: #f4ecd8;
   --color-felt-muted: #a6bbab;
   --color-felt-border: #2c4c40;
+  --color-felt-accent: #d9b45b;
+  --color-felt-accent-fg: #20321e;
+  /* Gold on a cream card face is illegible; this deeper gold carries the same accent read. */
+  --color-card-accent: #8a5f14;
   --color-success: #5fd39a;
   --color-success-ink: #0b1d17;
   --color-alert-bg: #5a2318;
@@ -73,6 +75,7 @@
   --color-felt-muted: var(--color-felt-muted);
   --color-felt-border: var(--color-felt-border);
   --color-felt-panel: var(--color-felt-panel);
+  --color-card-accent: var(--color-card-accent);
   --color-success: var(--color-success);
   --color-success-ink: var(--color-success-ink);
   --color-alert-bg: var(--color-alert-bg);
