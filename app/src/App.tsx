@@ -10,7 +10,8 @@ import { createHostPeer, connectToHost } from './net/peer';
 import { makeHostConn } from './net/hostConn';
 import { makeGuestConn } from './net/guestConn';
 import { setPeer, setHost, setGuest, teardownLive } from './net/live';
-import { loadSession, clearSession } from './store/persistence';
+import { loadSession, clearSession, loadRoomCode, saveRoomCode, clearRoomCode } from './store/persistence';
+import { roomIdFromCode, randomRoomCode } from './net/roomId';
 
 type Mode = 'landing' | 'host' | 'guest';
 type Terminal = 'kicked' | 'ended' | 'unreachable' | null;
@@ -25,6 +26,7 @@ function App() {
   const [myPeerId, setMyPeerId] = useState<string | undefined>(undefined);
   const [terminal, setTerminal] = useState<Terminal>(null);
   const [resumable, setResumable] = useState<{ roomId: string; state: SessionState } | null>(null);
+  const [hostError, setHostError] = useState<'name-taken' | null>(null);
   const state = useSession((s) => s.state);
   const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -55,51 +57,74 @@ function App() {
     }
   }, [mode, state]);
 
-  const handleHost = async ({ deck, name, hostVotes }: { deck: Deck; name: string; hostVotes: boolean }) => {
-    const hp = createHostPeer();
-    setPeer(hp.peer);
-    const id = await hp.ready;
-    setMyPeerId(id);
-    useSession.getState().initHost(id, deck, hostVotes);
-    const host = makeHostConn();
-    setHost(host);
-    hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
-    if (hostVotes) {
-      useSession.getState().dispatch({ type: 'join', name, role: 'voter' }, id);
-      host.broadcast();
-    }
+  const buildLink = (code: string) => {
     const base = import.meta.env.BASE_URL;
-    const link = `${location.origin}${base}${base.endsWith('/') ? '' : '/'}?room=${id}`;
-    setShareLink(link);
-    setMode('host');
+    return `${location.origin}${base}${base.endsWith('/') ? '' : '/'}?room=${encodeURIComponent(code)}`;
+  };
+
+  const handleHost = async (
+    { deck, name, hostVotes, roomName }: { deck: Deck; name: string; hostVotes: boolean; roomName: string },
+  ) => {
+    setHostError(null);
+    const code = roomName.trim() ? roomName.trim() : randomRoomCode();
+    const id = await roomIdFromCode(code);
+    saveRoomCode(code);
+    const hp = createHostPeer(id);
+    setPeer(hp.peer);
+    hp.peer.on('error', (e) => {
+      if ((e as { type?: string }).type === 'unavailable-id') {
+        setHostError('name-taken');
+        teardownLive();
+        setMode('landing');
+      }
+    });
+    hp.ready.then((assignedId) => {
+      useSession.getState().initHost(assignedId, deck, hostVotes);
+      const host = makeHostConn();
+      setHost(host);
+      hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
+      if (hostVotes) {
+        useSession.getState().dispatch({ type: 'join', name, role: 'voter' }, assignedId);
+        host.broadcast();
+      }
+      setShareLink(buildLink(code));
+      setMyPeerId(assignedId);
+      setMode('host');
+    });
   };
 
   const handleResume = async () => {
     const saved = loadSession();
     if (!saved) return;
-    const hp = createHostPeer();
+    setHostError(null);
+    const hp = createHostPeer(saved.state.roomId);
     setPeer(hp.peer);
-    await hp.ready;
-    useSession.getState().resumeHost(saved.state);
-    const host = makeHostConn();
-    setHost(host);
-    hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
-    const base = import.meta.env.BASE_URL;
-    const link = `${location.origin}${base}${base.endsWith('/') ? '' : '/'}?room=${saved.state.roomId}`;
-    setShareLink(link);
-    setMyPeerId(saved.state.hostPeerId);
-    host.broadcast();
-    setResumable(null);
-    setMode('host');
+    hp.ready.then(() => {
+      useSession.getState().resumeHost(saved.state);
+      const host = makeHostConn();
+      setHost(host);
+      hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
+      const code = loadRoomCode() ?? saved.state.roomId;
+      setShareLink(buildLink(code));
+      setMyPeerId(saved.state.hostPeerId);
+      host.broadcast();
+      setResumable(null);
+      setMode('host');
+    });
   };
 
   const handleDiscard = () => {
     clearSession();
+    clearRoomCode();
+    setHostError(null);
     setResumable(null);
   };
 
-  const handleJoin = ({ roomId, name, role }: { roomId: string; name: string; role: 'voter' | 'observer' }) => {
-    const { peer, conn } = connectToHost(roomId);
+  const handleJoin = async (
+    { roomCode, name, role }: { roomCode: string; name: string; role: 'voter' | 'observer' },
+  ) => {
+    const id = await roomIdFromCode(roomCode);
+    const { peer, conn } = connectToHost(id);
     setPeer(peer);
     peer.on('open', (pid) => setMyPeerId(pid));
     peer.on('error', () => setTerminal('unreachable'));
@@ -119,6 +144,8 @@ function App() {
     }
     teardownLive();
     useSession.getState().reset();
+    clearRoomCode();
+    setHostError(null);
     setShareLink('');
     setQrDataUrl(null);
     setMyPeerId(undefined);
@@ -150,6 +177,14 @@ function App() {
                   Discard
                 </button>
               </div>
+            </div>
+          )}
+          {hostError === 'name-taken' && (
+            <div
+              role="alert"
+              className="mx-auto mt-4 max-w-2xl rounded-lg border border-border bg-muted p-4 text-fg"
+            >
+              That room name is already in use right now — pick another.
             </div>
           )}
           <Landing initialRoom={initialRoom} onHost={handleHost} onJoin={handleJoin} />
