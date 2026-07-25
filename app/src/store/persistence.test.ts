@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadName, saveName, loadDecks, saveDecks } from './persistence';
+import { loadName, saveName, loadDecks, saveDecks, loadRoomCode, saveRoomCode, clearRoomCode } from './persistence';
 import { FIBONACCI, newDeck } from '../domain/decks';
 
 beforeEach(() => localStorage.clear());
@@ -33,5 +33,12 @@ describe('persistence', () => {
     expect(() => saveName('x')).not.toThrow();
     expect(loadName()).toBe('');
     globalThis.localStorage = orig;
+  });
+
+  it('round-trips a room code, clearing makes it null', () => {
+    saveRoomCode('acme-standup');
+    expect(loadRoomCode()).toBe('acme-standup');
+    clearRoomCode();
+    expect(loadRoomCode()).toBeNull();
   });
 });

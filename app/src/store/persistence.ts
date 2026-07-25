@@ -7,6 +7,7 @@ const K = {
   lastDeck: 'poker.lastDeckId',
   session: 'poker.session',
   hostPeerId: 'poker.hostPeerId',
+  roomCode: 'poker.roomCode',
 } as const;
 
 function get(key: string): string | null {
@@ -42,3 +43,7 @@ export const clearSession = (): void => remove(K.session);
 
 export const loadHostPeerId = (): string | null => get(K.hostPeerId);
 export const saveHostPeerId = (id: string): void => set(K.hostPeerId, id);
+
+export const loadRoomCode = (): string | null => get(K.roomCode);
+export const saveRoomCode = (code: string): void => set(K.roomCode, code);
+export const clearRoomCode = (): void => remove(K.roomCode);

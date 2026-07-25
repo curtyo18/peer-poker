@@ -15,8 +15,8 @@ export interface HostPeer {
   ready: Promise<string>;
 }
 
-export function createHostPeer(): HostPeer {
-  const requestedId = loadHostPeerId() ?? undefined;
+export function createHostPeer(desiredId?: string): HostPeer {
+  const requestedId = desiredId ?? loadHostPeerId() ?? undefined;
   const peer = new Peer(requestedId as string, PEER_OPTIONS);
   const ready = new Promise<string>((resolve) => {
     peer.on('open', (id) => { saveHostPeerId(id); resolve(id); });
