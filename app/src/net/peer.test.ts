@@ -37,4 +37,14 @@ describe('createHostPeer', () => {
     createHostPeer();
     expect(lastOptions).toEqual({ config: { iceServers: ICE_SERVERS } });
   });
+
+  it('tells an unhosted room apart from a failed connection', async () => {
+    const { isRoomMissingError } = await import('./peer');
+    expect(isRoomMissingError({ type: 'peer-unavailable' })).toBe(true);
+    expect(isRoomMissingError({ type: 'network' })).toBe(false);
+    expect(isRoomMissingError({ type: 'webrtc' })).toBe(false);
+    expect(isRoomMissingError(new Error('boom'))).toBe(false);
+    expect(isRoomMissingError(null)).toBe(false);
+    expect(isRoomMissingError(undefined)).toBe(false);
+  });
 });

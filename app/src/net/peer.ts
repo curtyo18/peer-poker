@@ -24,6 +24,12 @@ export function createHostPeer(desiredId?: string): HostPeer {
   return { peer, requestedId, ready };
 }
 
+// The broker reports an unknown peer id as 'peer-unavailable', which for us means nobody is
+// hosting that room — a different story for the user than a connection that genuinely failed.
+export function isRoomMissingError(err: unknown): boolean {
+  return (err as { type?: string } | null)?.type === 'peer-unavailable';
+}
+
 export function connectToHost(roomId: string): { peer: Peer; conn: DataConnection } {
   const peer = new Peer(undefined as unknown as string, PEER_OPTIONS);
   const conn = peer.connect(roomId, { reliable: true });

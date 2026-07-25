@@ -26,7 +26,6 @@ const terminalCopy = {
 };
 
 interface ConnStateProps {
-  mode: 'host' | 'guest';
   terminal: 'kicked' | 'ended' | 'unreachable' | 'not-found' | null;
   connected?: boolean;
   roomCode?: string;
@@ -35,7 +34,6 @@ interface ConnStateProps {
 }
 
 export function ConnState({
-  mode,
   terminal,
   connected = false,
   roomCode,
@@ -78,7 +76,7 @@ export function ConnState({
     );
   }
 
-  if (mode === 'guest' && !connected) {
+  if (!connected) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted" role="status">
         <span

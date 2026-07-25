@@ -28,7 +28,11 @@ function Confetti() {
   );
 }
 
-// Bars per deck value — the mode in gold, the rest translucent. Reads as "2 votes for 5".
+// An unvoted value still shows a stub, so the deck reads as a row rather than gaps.
+const BAR_STUB_PX = 8;
+const BAR_RANGE_PX = 64;
+
+// Bars per deck value — the mode in gold, the rest translucent.
 function Distribution({ deck, counts, mode }: { deck: string[]; counts: Record<string, number>; mode: string[] }) {
   const peak = Math.max(1, ...Object.values(counts));
   return (
@@ -36,17 +40,24 @@ function Distribution({ deck, counts, mode }: { deck: string[]; counts: Record<s
       {deck.map((v) => {
         const count = counts[v] ?? 0;
         return (
-          <div key={v} className="flex min-w-[26px] flex-1 flex-col items-center gap-1.5">
-            <span className="text-[13px] font-semibold text-felt-fg">{count || ''}</span>
-            <span className="sr-only"> votes for </span>
+          <div
+            key={v}
+            className="flex min-w-[26px] flex-1 flex-col items-center gap-1.5"
+            aria-label={`${count} ${count === 1 ? 'vote' : 'votes'} for ${v}`}
+            role="img"
+          >
+            <span aria-hidden="true" className="text-[13px] font-semibold text-felt-fg">
+              {count || ''}
+            </span>
             <div
+              aria-hidden="true"
               className="w-full rounded-t-[5px] transition-[height] duration-300"
               style={{
-                height: `${8 + (count / peak) * 64}px`,
+                height: `${BAR_STUB_PX + (count / peak) * BAR_RANGE_PX}px`,
                 background: mode.includes(v) && count > 0 ? 'var(--color-accent)' : 'rgba(255,255,255,.16)',
               }}
             />
-            <span className="font-display text-sm text-felt-muted">{v}</span>
+            <span aria-hidden="true" className="font-display text-sm text-felt-muted">{v}</span>
           </div>
         );
       })}

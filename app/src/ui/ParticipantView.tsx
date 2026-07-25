@@ -32,7 +32,6 @@ export function ParticipantView({
       <main className={mainClass}>
         {terminal ? (
           <ConnState
-            mode="guest"
             terminal={terminal}
             roomCode={roomCode}
             onHostRoom={onHostRoom}
@@ -40,7 +39,7 @@ export function ParticipantView({
           />
         ) : (
           <div className={`${panelClass} flex items-center justify-center`}>
-            <ConnState mode="guest" terminal={null} onLeave={onLeave} />
+            <ConnState terminal={null} onLeave={onLeave} />
           </div>
         )}
       </main>
@@ -110,7 +109,7 @@ export function ParticipantView({
 
       <ParticipantList state={state} isHost={false} onKick={() => { /* guests cannot kick */ }} />
 
-      <ConnState mode="guest" terminal={terminal} connected onLeave={onLeave} />
+      <ConnState terminal={terminal} connected onLeave={onLeave} />
     </main>
   );
 }

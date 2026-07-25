@@ -7,7 +7,7 @@ import { ParticipantView } from './ui/ParticipantView';
 import { Button, panelClass } from './ui/primitives';
 import { useSession } from './store/session';
 import type { Deck, SessionState } from './domain/types';
-import { createHostPeer, connectToHost } from './net/peer';
+import { createHostPeer, connectToHost, isRoomMissingError } from './net/peer';
 import { makeHostConn } from './net/hostConn';
 import { makeGuestConn } from './net/guestConn';
 import { setPeer, setHost, setGuest, teardownLive } from './net/live';
@@ -22,7 +22,8 @@ import {
   loadLastDeckId,
 } from './store/persistence';
 import { FIBONACCI } from './domain/decks';
-import { roomIdFromCode, randomRoomCode, normalizeRoomName } from './net/roomId';
+import { decideEntry } from './domain/entry';
+import { roomIdFromCode, randomRoomCode } from './net/roomId';
 
 type Mode = 'landing' | 'host' | 'guest';
 type Terminal = 'kicked' | 'ended' | 'unreachable' | 'not-found' | null;
@@ -44,29 +45,37 @@ function App() {
   const [resumableCode, setResumableCode] = useState<string | null>(null);
   const [hostError, setHostError] = useState<'name-taken' | null>(null);
   const [displayRoomCode, setDisplayRoomCode] = useState<string | undefined>(undefined);
-  const [attemptedJoin, setAttemptedJoin] = useState<{ roomCode: string; name: string } | null>(null);
+  const [attemptedJoin, setAttemptedJoin] = useState<
+    { roomCode: string; name: string; role: 'voter' | 'observer' } | null
+  >(null);
+  // Read once: localStorage is not a render-time source of truth, and the entry decision and
+  // the landing page's name prompt must agree on what this device remembered at startup.
+  const [storedName] = useState(() => loadName());
   const state = useSession((s) => s.state);
   const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoJoinedRef = useRef(false);
+  const joinAttemptRef = useRef(0);
 
   useEffect(() => {
     const room = initialRoom;
     if (!room || autoJoinedRef.current) return;
-
-    // A host reloading their own room lands on their own link — resume it rather than
-    // trying to join the room they used to be hosting.
-    const savedCode = loadRoomCode();
-    const isOwnRoom =
-      savedCode !== null &&
-      normalizeRoomName(savedCode) === normalizeRoomName(room) &&
-      loadSession() !== null;
-
-    // With a name already on this device there is nothing left to ask: go straight in.
-    // Without one, the landing page's join form collects it (see `needsName` below).
-    const storedName = loadName();
-    if (isOwnRoom || !storedName) return;
-    autoJoinedRef.current = true;
-    void handleJoin({ roomCode: room, name: storedName, role: 'voter' });
+    let superseded = false;
+    void (async () => {
+      const entry = decideEntry({
+        urlRoomId: await roomIdFromCode(room),
+        savedSessionRoomId: loadSession()?.state.roomId ?? null,
+        storedName,
+      });
+      if (superseded) return;
+      // The link's code hashes to the saved session's room, so it is the readable name for a
+      // room whose code we no longer store — leaving clears the code but keeps the session,
+      // and a room id cannot be turned back into the code people type.
+      if (entry === 'resume') setResumableCode((c) => c ?? room);
+      if (autoJoinedRef.current || entry !== 'auto-join') return;
+      autoJoinedRef.current = true;
+      void handleJoin({ roomCode: room, name: storedName, role: 'voter' });
+    })();
+    return () => { superseded = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -155,7 +164,10 @@ function App() {
       const host = makeHostConn();
       setHost(host);
       hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
-      const code = loadRoomCode() ?? saved.state.roomId;
+      // Fall back to the code from the link before the room id: an id is a one-way hash of a
+      // code, so a link built from one would send joiners to a room that cannot exist.
+      const code = loadRoomCode() ?? resumableCode ?? saved.state.roomId;
+      saveRoomCode(code);
       setShareLink(buildLink(code));
       syncUrl(code);
       setDisplayRoomCode(code);
@@ -178,17 +190,17 @@ function App() {
   ) => {
     const id = await roomIdFromCode(roomCode);
     setDisplayRoomCode(roomCode);
-    setAttemptedJoin({ roomCode, name });
+    setAttemptedJoin({ roomCode, name, role });
     syncUrl(roomCode);
+    const attempt = ++joinAttemptRef.current;
     const { peer, conn } = connectToHost(id);
     setPeer(peer);
     peer.on('open', (pid) => setMyPeerId(pid));
     peer.on('error', (e) => {
-      // 'peer-unavailable' means the broker has no such room — nobody is hosting it. Anything
-      // else is a genuine connection failure, which is a different conversation with the user.
-      const noSuchRoom = (e as { type?: string }).type === 'peer-unavailable';
+      // A torn-down peer can still emit; ignore anything from an attempt we have moved on from.
+      if (attempt !== joinAttemptRef.current) return;
       clearConnectTimeout();
-      setTerminal(noSuchRoom ? 'not-found' : 'unreachable');
+      setTerminal(isRoomMissingError(e) ? 'not-found' : 'unreachable');
     });
     const guest = makeGuestConn(conn, (s) => setTerminal(s === 'kicked' ? 'kicked' : 'ended'));
     setGuest(guest);
@@ -206,12 +218,19 @@ function App() {
     const lastId = loadLastDeckId();
     const deck = decks.find((d) => d.id === lastId) ?? FIBONACCI;
     clearConnectTimeout();
+    joinAttemptRef.current++;
     teardownLive();
     useSession.getState().reset();
     setTerminal(null);
     setMyPeerId(undefined);
     setAttemptedJoin(null);
-    void handleHost({ deck, name: attemptedJoin.name, hostVotes: true, roomName: attemptedJoin.roomCode });
+    // Someone who came to watch stays a watcher when they end up running the room.
+    void handleHost({
+      deck,
+      name: attemptedJoin.name,
+      hostVotes: attemptedJoin.role === 'voter',
+      roomName: attemptedJoin.roomCode,
+    });
   };
 
   const handleLeave = () => {
@@ -267,7 +286,7 @@ function App() {
           )}
           <Landing
             initialRoom={initialRoom}
-            needsName={!!initialRoom && loadName() === ''}
+            needsName={!!initialRoom && storedName.trim() === ''}
             onHost={handleHost}
             onJoin={handleJoin}
           />
