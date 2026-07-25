@@ -624,9 +624,12 @@ Drop `storedName` from every `decideEntry` call in the test file — it is no lo
 npm test -- src/domain/entry.test.ts && npm run build
 ```
 
-Tests pass; the build fails in `App.tsx` on the removed `'auto-join'` branch. Fix it in Task 3.1;
-if you want a green tree at this commit, temporarily replace the `if (... entry !== 'auto-join')`
-block in `App.tsx:75-77` with `if (entry === 'join') setMode('join');` and let Task 3.1 finish it.
+Tests pass, but the build fails in `App.tsx`: removing `'auto-join'` from the union makes the
+existing comparison a type error, and the `'join'` mode it should become does not exist until
+Task 3.1. There is no shim that both compiles and behaves honestly.
+
+**Therefore run 2.4 and 3.1 as one unit** — two commits, but implemented together, so no commit
+in the history is knowingly broken.
 
 Commit: `feat(domain): always confirm before joining a room (ADR-0004)`
 
@@ -842,7 +845,9 @@ export function LinkedTitle({ title, url }: { title: string; url?: string }) {
 Use it unchanged in the Voting and Reveal headers too — one rendering rule, three places.
 
 **Overflow menu** on `⋯`: a floating menu (`#16261e` → `bg-surface`, radius 10px, shadow) with
-"Edit item" (inline form over the row, editing title and URL, calling `editItem`), "Move up",
+"Edit item" (inline form over the row, editing title and URL, calling `editItem`) — **always pass
+the current url, even when only the title changed: `editItem` recomputes `url` from its argument,
+so omitting it clears the link** — "Move up",
 "Move down" (existing `moveItem`) and "Remove" in `text-danger-text` (existing `removeItem`).
 Closes on click-outside and on Escape; one open menu at a time, tracked by item id. This replaces
 today's always-visible row of four ghost buttons.
@@ -960,7 +965,9 @@ Commit: `feat(ui): compact voting stage with a top pill bar`
    `border-verdict-border`, centred: label "SPLIT TABLE — DISCUSS" in `text-verdict-fg`, the
    `suggestedValue` big in Playfair `text-verdict-num`, and "Estimates run {min} to {max} — talk
    it through, then re-vote or accept."
-5. **Stats row:** three `StatTile` — LOW / MODE / HIGH from `voteStats`.
+5. **Stats row:** three `StatTile` from `primitives.tsx` — LOW / MODE / HIGH from `voteStats`.
+   **Delete `RevealPanel.tsx`'s local `StatTile` in this task** — two components of that name in
+   one package, disagreeing on layout, is a collision waiting to happen.
 6. **"Your vote" card:** the same `CardHand`, always present so a guest can re-cast.
 7. **Action bars.** Host: ghost "↺ Re-vote this item" (`revote`) left; right an Accept `<select>`
    over the deck, **preselected to `suggestedValue`**, plus gold "Confirm · next item →"
