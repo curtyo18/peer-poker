@@ -26,6 +26,7 @@ function App() {
   const [myPeerId, setMyPeerId] = useState<string | undefined>(undefined);
   const [terminal, setTerminal] = useState<Terminal>(null);
   const [resumable, setResumable] = useState<{ roomId: string; state: SessionState } | null>(null);
+  const [resumableCode, setResumableCode] = useState<string | null>(null);
   const [hostError, setHostError] = useState<'name-taken' | null>(null);
   const state = useSession((s) => s.state);
   const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -38,6 +39,7 @@ function App() {
 
   useEffect(() => {
     setResumable(loadSession());
+    setResumableCode(loadRoomCode());
   }, []);
 
   useEffect(() => {
@@ -160,7 +162,7 @@ function App() {
         <>
           {resumable && (
             <div className="mx-auto mt-4 flex max-w-2xl items-center justify-between gap-4 rounded-lg border border-border bg-muted p-4 text-fg">
-              <span>You have a prior host session for room &ldquo;{resumable.roomId}&rdquo;.</span>
+              <span>You have a prior host session for room &ldquo;{resumableCode ?? resumable.roomId}&rdquo;.</span>
               <div className="flex gap-2">
                 <button
                   type="button"
