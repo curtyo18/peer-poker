@@ -21,6 +21,11 @@
   --color-card: #f3ebd5;
   --color-card-ink: #1c2b22;
   --color-ready: #7fce9b;
+  /* The "voted" pill's border. A token rather than `border-ready/28` because the alpha itself
+     has to differ per theme — a light-mode green needs more of it to register on cream. The
+     pill's *fill* is just `bg-ready/10`, which color-mix already resolves per theme. */
+  --color-ready-border: rgba(127, 206, 155, 0.28);
+  --color-danger-border: rgba(200, 110, 90, 0.3);
   --color-verdict-bg: #3a201b;
   --color-verdict-border: rgba(200, 110, 90, 0.35);
   --color-verdict-fg: #d19484;
@@ -63,6 +68,8 @@
   --color-card: #fffdf6;
   --color-card-ink: #1c2b22;
   --color-ready: #1c6f3f;
+  --color-ready-border: rgba(28, 111, 63, 0.42);
+  --color-danger-border: rgba(163, 58, 44, 0.4);
   --color-verdict-bg: #f6e2da;
   --color-verdict-border: rgba(160, 80, 60, 0.4);
   --color-verdict-fg: #8c3d2c;
@@ -90,6 +97,8 @@
   --color-felt-accent-fg: #20321e;
   /* Gold on a cream card face is illegible; this deeper gold carries the same accent read. */
   --color-card-accent: #8a5f14;
+  /* Avatar fills are fixed hexes chosen for identity, not theme, so their ink is fixed too. */
+  --color-avatar-fg: #fff;
   --color-success: #5fd39a;
   --color-success-ink: #0b1d17;
   --color-alert-bg: #5a2318;
@@ -117,6 +126,9 @@
   --color-card-edge: var(--color-card-edge);
   --color-card-ink: var(--color-card-ink);
   --color-ready: var(--color-ready);
+  --color-ready-border: var(--color-ready-border);
+  --color-danger-border: var(--color-danger-border);
+  --color-avatar-fg: var(--color-avatar-fg);
   --color-verdict-bg: var(--color-verdict-bg);
   --color-verdict-border: var(--color-verdict-border);
   --color-verdict-fg: var(--color-verdict-fg);
