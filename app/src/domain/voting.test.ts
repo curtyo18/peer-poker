@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { voteStats } from './voting';
+import { voteStats, suggestedValue, outlierValue } from './voting';
+import { FIBONACCI } from './decks';
 
 describe('voteStats', () => {
   it('summarises numeric votes', () => {
@@ -26,5 +27,53 @@ describe('voteStats', () => {
     const s = voteStats({});
     expect(s.mode).toEqual([]);
     expect(s.min).toBeNull();
+  });
+});
+
+describe('suggestedValue', () => {
+  it('is the most-voted value', () => {
+    expect(suggestedValue({ a: '5', b: '5', c: '8' })).toBe('5');
+  });
+
+  it('breaks a tie downwards', () => {
+    expect(suggestedValue({ a: '3', b: '8' })).toBe('3');
+  });
+
+  it('ignores non-numeric cards when breaking a tie', () => {
+    expect(suggestedValue({ a: '8', b: '?' })).toBe('8');
+  });
+
+  it('is null with no votes', () => {
+    expect(suggestedValue({})).toBeNull();
+  });
+
+  it('falls back to the mode when no card in it is numeric', () => {
+    expect(suggestedValue({ a: '?', b: '?' })).toBe('?');
+  });
+});
+
+describe('outlierValue', () => {
+  const deck = FIBONACCI.values;
+
+  it('is null when everyone agrees', () => {
+    expect(outlierValue({ a: '5', b: '5' }, deck)).toBeNull();
+  });
+
+  it('is null when the spread is one deck step', () => {
+    expect(outlierValue({ a: '5', b: '5', c: '8' }, deck)).toBeNull();
+  });
+
+  it('is the value furthest from the mode on a wide spread', () => {
+    expect(outlierValue({ a: '3', b: '3', c: '3', d: '21' }, deck)).toBe('21');
+  });
+
+  it('ignores non-numeric cards', () => {
+    expect(outlierValue({ a: '3', b: '3', c: '?' }, deck)).toBeNull();
+  });
+
+  // A table whose most-voted card is '?' has no centre to measure distance from, so nothing is
+  // an outlier — even though '?' and '1' sit seven deck positions apart.
+  it('is null when the most-voted card is not a number', () => {
+    expect(outlierValue({ a: '?', b: '?', c: '1' }, deck)).toBeNull();
   });
 });
