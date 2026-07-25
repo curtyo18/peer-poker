@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { DataConnection } from 'peerjs';
 import QRCode from 'qrcode';
 import { AppHeader } from './ui/AppHeader';
 import { Landing } from './ui/Landing';
@@ -146,17 +147,10 @@ function App() {
       try { hp.peer.reconnect(); } catch { /* destroyed peer: nothing to reconnect */ }
     });
     hp.ready.then((assignedId) => {
-      console.warn('[peerpoker] hosting', { code, requestedId: id, assignedId });
       useSession.getState().initHost(assignedId, deck, hostVotes);
       const host = makeHostConn();
       setHost(host);
-      hp.peer.on('connection', (conn) => {
-        console.warn('[peerpoker] incoming connection from', conn.peer);
-        conn.on('open', () => {
-          console.warn('[peerpoker] connection open', conn.peer);
-          host.onConnection(conn);
-        });
-      });
+      hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
       if (hostVotes) {
         useSession.getState().dispatch({ type: 'join', name, role: 'voter' }, assignedId);
         host.broadcast();
@@ -208,16 +202,10 @@ function App() {
     setAttemptedJoin({ roomCode, name, role });
     syncUrl(roomCode);
     const attempt = ++joinAttemptRef.current;
-    console.warn('[peerpoker] dialling', { code: roomCode, roomId: id });
-    const { peer, conn } = connectToHost(id);
+    const { peer, conn: pendingConn } = connectToHost(id);
+    let conn: DataConnection | null = null;
     setPeer(peer);
-    // Until this fires the peer has no broker connection, and PeerJS quietly queues the offer
-    // rather than failing — the join then dies of the timeout with nothing logged anywhere.
-    peer.on('open', (pid) => {
-      console.warn('[peerpoker] guest peer registered as', pid);
-      setMyPeerId(pid);
-    });
-    peer.on('disconnected', () => console.warn('[peerpoker] guest lost the broker'));
+    peer.on('open', (pid) => setMyPeerId(pid));
     peer.on('error', (e) => {
       // A torn-down peer can still emit; ignore anything from an attempt we have moved on from.
       if (attempt !== joinAttemptRef.current) return;
@@ -228,37 +216,28 @@ function App() {
       clearConnectTimeout();
       setTerminal(isRoomMissingError(e) ? 'not-found' : 'unreachable');
     });
-    // Whether ICE ever completes is the difference between "the host never replied" and
-    // "the two browsers could not find a path to each other".
-    conn.on('iceStateChanged', (s) => console.warn('[peerpoker] ice', s));
-    const guest = makeGuestConn(conn, (s) => setTerminal(s === 'kicked' ? 'kicked' : 'ended'));
-    setGuest(guest);
-    conn.on('open', () => guest.join(name, role));
     setMode('guest');
     connectTimeoutRef.current = setTimeout(() => {
       // Nothing errored, the room just never answered — a different failure from a refused
       // or impossible connection, and it points at the host rather than at this device.
       if (useSession.getState().state === null) {
-        const pc = conn.peerConnection as RTCPeerConnection | undefined;
+        const pc = conn?.peerConnection as RTCPeerConnection | undefined;
         console.error('[peerpoker] join timed out with no error', {
           roomCode,
-          dataChannelOpen: conn.open,
+          dialled: conn !== null,
+          dataChannelOpen: conn?.open ?? false,
           ice: pc?.iceConnectionState,
           iceGathering: pc?.iceGatheringState,
           signaling: pc?.signalingState,
         });
-        void pc?.getStats().then((stats) => {
-          const pairs: unknown[] = [];
-          stats.forEach((r) => {
-            if (r.type === 'candidate-pair' || r.type === 'local-candidate') {
-              pairs.push({ type: r.type, state: r.state, candidate: r.candidateType, addr: r.address });
-            }
-          });
-          console.error('[peerpoker] ice candidates', pairs);
-        });
         setTerminal('no-answer');
       }
     }, GUEST_CONNECT_TIMEOUT_MS);
+
+    conn = await pendingConn;
+    const guest = makeGuestConn(conn, (s) => setTerminal(s === 'kicked' ? 'kicked' : 'ended'));
+    setGuest(guest);
+    conn.on('open', () => guest.join(name, role));
   };
 
   // Offered when a join finds no host: take over the code they were trying to reach.

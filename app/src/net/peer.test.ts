@@ -2,17 +2,36 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const openCb: Record<string, (id: string) => void> = {};
 let lastOptions: unknown;
+let connectCalls = 0;
+const onceCb: Record<string, () => void> = {};
 vi.mock('peerjs', () => ({
   default: class {
     id: string;
+    open = false;
     constructor(id?: string, options?: unknown) { this.id = id ?? 'RANDOM-ID'; lastOptions = options; }
     on(ev: string, cb: (arg: string) => void) { if (ev === 'open') openCb.open = cb; }
-    connect() { return { on: vi.fn(), send: vi.fn() }; }
+    once(ev: string, cb: () => void) { if (ev === 'open') onceCb.open = cb; }
+    connect() { connectCalls++; return { on: vi.fn(), send: vi.fn() }; }
     destroy() {}
   },
 }));
 
-beforeEach(() => { localStorage.clear(); lastOptions = undefined; });
+beforeEach(() => { localStorage.clear(); lastOptions = undefined; connectCalls = 0; delete onceCb.open; });
+
+describe('connectToHost', () => {
+  // PeerJS silently drops signalling sent between the peer getting its id and its socket
+  // opening: not queued, not sent, no error. Dialling early loses the offer and the join
+  // then hangs until it times out, so the dial must wait for 'open'.
+  it('does not dial until the peer has opened', async () => {
+    const { connectToHost } = await import('./peer');
+    const { conn } = connectToHost('pp-room');
+    expect(connectCalls).toBe(0);
+
+    onceCb.open();
+    await conn;
+    expect(connectCalls).toBe(1);
+  });
+});
 
 describe('createHostPeer', () => {
   it('reclaims a persisted peer id on second call', async () => {

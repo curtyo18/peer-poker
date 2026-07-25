@@ -30,8 +30,16 @@ export function isRoomMissingError(err: unknown): boolean {
   return (err as { type?: string } | null)?.type === 'peer-unavailable';
 }
 
-export function connectToHost(roomId: string): { peer: Peer; conn: DataConnection } {
+// Dial only once the peer is open. PeerJS assigns the socket its id before the websocket
+// handshake finishes, and `Socket.send` queues messages only while the id is still unknown —
+// anything sent in the gap between the two is dropped with no error and no retry. Connecting
+// synchronously lands the offer in exactly that gap, so the host never hears about the guest
+// and the join dies of a timeout instead of failing.
+export function connectToHost(roomId: string): { peer: Peer; conn: Promise<DataConnection> } {
   const peer = new Peer(undefined as unknown as string, PEER_OPTIONS);
-  const conn = peer.connect(roomId, { reliable: true });
+  const dial = () => peer.connect(roomId, { reliable: true });
+  const conn = peer.open
+    ? Promise.resolve(dial())
+    : new Promise<DataConnection>((resolve) => peer.once('open', () => resolve(dial())));
   return { peer, conn };
 }
