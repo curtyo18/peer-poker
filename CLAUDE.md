@@ -14,12 +14,7 @@ Branch off `master` → commit → push → PR → **subagent review** → CI gr
 [Conventional Commits](https://www.conventionalcommits.org): `type(scope): subject`.
 Body is prose explaining *why*, not a changelog of files.
 
-Required trailers:
-
-```
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
-Claude-Session: <session url>
-```
+No AI trailers (`Co-Authored-By: Claude ...`, `Claude-Session: ...`) — plain conventional commits only.
 
 ## Verify (from `app/`)
 
