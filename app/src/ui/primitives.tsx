@@ -238,7 +238,7 @@ export function Avatar({
   return (
     <span
       className={`grid flex-none place-items-center rounded-full font-bold ${avatarSizes[size]} ${
-        stacked ? '-ml-2 border-2 border-felt-2 first:ml-0' : ''
+        stacked ? '-ml-2 border-2 border-surface first:ml-0' : ''
       } ${dimmed ? 'opacity-80' : ''} ${className}`}
       style={{
         background: isSelf ? 'var(--color-accent)' : avatarColor(name),

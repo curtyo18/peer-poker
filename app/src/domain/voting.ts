@@ -57,7 +57,13 @@ export function outlierValue(
   for (const v of new Set(Object.values(votes))) {
     if (asNumber(v) === null || suggested === null) continue;
     const steps = Math.abs(index(v) - index(suggested));
-    if (furthest === null || steps > furthest.steps) furthest = { v, steps };
+    // An equidistant tie goes to the higher card: an over-estimate is the one worth discussing,
+    // and it makes the outlier independent of the order votes arrived in (vote-object key order
+    // otherwise decided it, which is arbitrary and had been left undecided twice already).
+    const better = furthest === null
+      || steps > furthest.steps
+      || (steps === furthest.steps && index(v) > index(furthest.v));
+    if (better) furthest = { v, steps };
   }
   return furthest !== null && furthest.steps > 1 ? furthest.v : null;
 }

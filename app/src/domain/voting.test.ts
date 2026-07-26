@@ -76,4 +76,14 @@ describe('outlierValue', () => {
   it('is null when the most-voted card is not a number', () => {
     expect(outlierValue({ a: '?', b: '?', c: '1' }, deck)).toBeNull();
   });
+
+  it('breaks an equidistant tie by preferring the higher card', () => {
+    expect(outlierValue({ a: '2', b: '5', c: '5', d: '13' }, FIBONACCI.values)).toBe('13');
+  });
+
+  it('does not depend on the order the votes arrived in', () => {
+    const deck = FIBONACCI.values;
+    expect(outlierValue({ d: '13', a: '2', c: '5', b: '5' }, deck))
+      .toBe(outlierValue({ a: '2', b: '5', c: '5', d: '13' }, deck));
+  });
 });

@@ -1,10 +1,11 @@
 import type { CardValue, SessionState } from '../domain/types';
 import { useSession } from '../store/session';
 import { getGuest, getHost } from '../net/live';
-import { HostView } from './HostView';
-import { ParticipantView } from './ParticipantView';
+import { ConnState } from './ConnState';
 import { ConsoleStage } from './ConsoleStage';
 import { VotingStage } from './VotingStage';
+import { RevealStage } from './RevealStage';
+import { panelClass } from './primitives';
 
 interface RoomViewProps {
   role: 'host' | 'guest';
@@ -19,27 +20,24 @@ interface RoomViewProps {
 }
 
 // RoomView is a stage router with three destinations: the console (no active item), voting (an
-// active item, not revealed), and reveal (revealed). Console and voting have their own stages
-// now — RevealStage is the remaining later task and doesn't exist yet — so the revealed branch
-// still delegates to the pre-refresh HostView/ParticipantView, which already renders that state
-// correctly. TODO(3.6) replaces that delegation with RevealStage and, once it's gone, deletes
-// HostView/ParticipantView. Delegating here (rather than skipping the router entirely) keeps
-// every intermediate commit shippable.
+// active item, not revealed), and reveal (revealed). Each has its own stage component; this file
+// just picks one and wires up the host/guest mutation closures they need.
 export function RoomView(props: RoomViewProps) {
   const { role, state, shareLink, roomCode, qrDataUrl, myPeerId, terminal, onHostRoom, onLeave } = props;
 
-  // A guest with no state yet is still connecting (or has hit a terminal state);
-  // ParticipantView already renders exactly that, including ConnState.
+  // A guest with no state yet is still connecting, or has hit a terminal state (kicked, ended,
+  // unreachable, ...) before ever receiving one — this is what ParticipantView used to render.
   if (!state) {
     return (
-      <ParticipantView
-        state={null}
-        myPeerId={myPeerId}
-        terminal={terminal}
-        roomCode={roomCode}
-        onHostRoom={onHostRoom}
-        onLeave={onLeave}
-      />
+      <main className="mx-auto flex max-w-[760px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
+        {terminal ? (
+          <ConnState terminal={terminal} roomCode={roomCode} onHostRoom={onHostRoom} onLeave={onLeave} />
+        ) : (
+          <div className={`${panelClass} flex items-center justify-center`}>
+            <ConnState terminal={null} onLeave={onLeave} />
+          </div>
+        )}
+      </main>
     );
   }
 
@@ -110,28 +108,29 @@ export function RoomView(props: RoomViewProps) {
     );
   }
 
-  // TODO(3.6): RevealStage replaces these two delegations.
   if (role === 'host') {
-    // App only renders RoomView with role="host" once myPeerId is assigned (see App.tsx's
-    // `mode === 'host' && state && myPeerId` guard), so this is safely non-null here.
+    const onVote = (value: CardValue) => {
+      // App only renders RoomView with role="host" once myPeerId is assigned (see App.tsx's
+      // `mode === 'host' && state && myPeerId` guard), so this is safely non-null here.
+      useSession.getState().dispatch({ type: 'castVote', value }, myPeerId as string);
+      getHost()?.broadcast();
+    };
+    // Tell the room it is over before tearing the peer down, or guests are left holding a
+    // state for a host that has simply stopped answering.
+    const onEnd = () => { getHost()?.end(); onLeave(); };
     return (
-      <HostView
-        state={state}
-        shareLink={shareLink}
-        roomCode={roomCode}
-        qrDataUrl={qrDataUrl}
-        myPeerId={myPeerId as string}
-        onLeave={onLeave}
-      />
+      <RevealStage role="host" state={state} item={active} myPeerId={myPeerId} onVote={onVote} onMutate={onMutate} onEnd={onEnd} />
     );
   }
+  const onVote = (value: CardValue) => { getGuest()?.vote(value); };
   return (
-    <ParticipantView
+    <RevealStage
+      role="guest"
       state={state}
+      item={active}
       myPeerId={myPeerId}
+      onVote={onVote}
       terminal={terminal}
-      roomCode={roomCode}
-      onHostRoom={onHostRoom}
       onLeave={onLeave}
     />
   );
