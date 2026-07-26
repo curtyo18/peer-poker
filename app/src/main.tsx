@@ -1,7 +1,7 @@
 // Self-hosted via Fontsource: ADR-0001's no-third-party-contact posture rules out a runtime
-// request to fonts.googleapis.com. Mono is latin-only — it renders app copy, headings and room
-// codes. Public Sans deliberately keeps every subset: it is the face that renders participant
-// names and agenda titles, which people type in their own script.
+// request to fonts.googleapis.com. Mono is latin-only — it renders room codes. Public Sans
+// deliberately keeps every subset: it is the face that renders app copy, headings, and
+// participant names and agenda titles, which people type in their own script.
 import '@fontsource/public-sans/400.css';
 import '@fontsource/public-sans/500.css';
 import '@fontsource/public-sans/600.css';

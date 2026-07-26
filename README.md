@@ -48,10 +48,9 @@ The app lives in [`app/`](app/). See the plan for the build sequence.
 
 ### Fonts
 
-The app self-hosts three open-source families rather than loading them from a CDN, so no
+The app self-hosts two open-source families rather than loading them from a CDN, so no
 third-party request is made at runtime. Each is licensed under the
 [SIL Open Font License 1.1](app/public/OFL.txt), which is served alongside them:
 
-- **Playfair Display** — Copyright 2017 The Playfair Display Project Authors
 - **Public Sans** — Copyright 2015 The Public Sans Project Authors
 - **Space Mono** — Copyright 2016 The Space Mono Project Authors
