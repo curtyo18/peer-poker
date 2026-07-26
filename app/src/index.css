@@ -169,8 +169,8 @@
 
   /* Self-hosted via Fontsource (see src/main.tsx) — the handoff's typography without a runtime
      request to fonts.googleapis.com, which ADR-0001's no-third-party-contact posture rules out. */
-  --font-display: 'Playfair Display', Georgia, serif;
   --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sans);
   --font-mono: 'Space Mono', ui-monospace, monospace;
 
   --animate-spin-slow: spin 0.8s linear infinite;

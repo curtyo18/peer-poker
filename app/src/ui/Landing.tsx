@@ -1,7 +1,17 @@
 import { useState } from 'react';
 import type { Deck } from '../domain/types';
 import { FIBONACCI } from '../domain/decks';
-import { loadDecks, loadLastDeckId, loadName, saveLastDeckId, saveName } from '../store/persistence';
+import {
+  loadDecks,
+  loadLastDeckId,
+  loadLastHostRoomName,
+  loadLastJoinCode,
+  loadName,
+  saveLastDeckId,
+  saveLastHostRoomName,
+  saveLastJoinCode,
+  saveName,
+} from '../store/persistence';
 import { DeckManager } from './DeckManager';
 import { PlayingCard } from './PlayingCard';
 import { Button, DisplayHeading, Felt, Kicker, inputClass, monoClass } from './primitives';
@@ -68,9 +78,9 @@ export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
   );
   const [hostName, setHostName] = useState(() => loadName());
   const [hostVotes, setHostVotes] = useState(true);
-  const [roomName, setRoomName] = useState('');
+  const [roomName, setRoomName] = useState(() => loadLastHostRoomName());
 
-  const [enterCode, setEnterCode] = useState('');
+  const [enterCode, setEnterCode] = useState(() => loadLastJoinCode());
 
   const closeDeckManager = () => {
     setDeckManagerOpen(false);
@@ -82,6 +92,7 @@ export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
     const deck = decks.find((d) => d.id === hostDeckId) ?? FIBONACCI;
     saveName(hostName);
     saveLastDeckId(deck.id);
+    saveLastHostRoomName(roomName.trim());
     onHost({ deck, name: hostName, hostVotes, roomName: roomName.trim() });
   };
 
@@ -89,6 +100,7 @@ export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
     e.preventDefault();
     const trimmed = enterCode.trim();
     if (!trimmed) return;
+    saveLastJoinCode(trimmed);
     onEnterCode(trimmed);
   };
 

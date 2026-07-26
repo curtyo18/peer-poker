@@ -4,7 +4,7 @@ import { BUILTIN_DECKS, FIBONACCI, TSHIRT, isBuiltinDeck, seedDecks, validateDec
 describe('decks', () => {
   it('provides a Fibonacci built-in deck', () => {
     expect(FIBONACCI.name).toBe('Fibonacci');
-    expect(FIBONACCI.values).toEqual(['1', '2', '3', '5', '8', '13', '21', '?', '☕']);
+    expect(FIBONACCI.values).toEqual(['0', '½', '1', '2', '3', '5', '8', '13', '21', '?', '☕']);
   });
 
   it('provides a T-shirt built-in deck', () => {

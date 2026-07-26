@@ -116,12 +116,15 @@ interface SessionState {
 ### localStorage schema (per browser, never shared)
 
 ```
-poker.name           -> string           // remembered display name
-poker.decks          -> Deck[]           // saved custom decks (+ built-in Fibonacci seeded)
-poker.lastDeckId     -> string           // last deck the host used
-poker.session        -> { roomId, state } // host-only mirror for reload restore
-poker.hostPeerId     -> string           // persisted peer id for reclaim-on-reload
-poker.theme          -> 'dark' | 'light' // UI theme; defaults to dark, user-switchable
+poker.name              -> string           // remembered display name
+poker.decks             -> Deck[]           // saved custom decks (+ built-in Fibonacci seeded)
+poker.lastDeckId        -> string           // last deck the host used
+poker.session           -> { roomId, state } // host-only mirror for reload restore
+poker.hostPeerId        -> string           // persisted peer id for reclaim-on-reload
+poker.roomCode          -> string           // current room's code, for the resume banner
+poker.lastHostRoomName  -> string           // last "room name" typed on the host form
+poker.lastJoinCode      -> string           // last room code typed on the join form
+poker.theme             -> 'dark' | 'light' // UI theme; defaults to dark, user-switchable
 ```
 
 ### Theming (deliberate deviation from dark-only house standard)

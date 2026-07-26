@@ -39,7 +39,6 @@ export function CardHand({ deck, myVote, disabled, onVote }: CardHandProps) {
               value={value}
               selected={selected}
               disabled={disabled}
-              showCorner
               caption={selected ? 'Your pick' : undefined}
               ariaLabel={`Play ${value}`}
               ariaPressed={selected}

@@ -27,7 +27,6 @@ interface PlayingCardProps {
   ariaLabel?: string;
   ariaPressed?: boolean;
   caption?: ReactNode;
-  showCorner?: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
 }
@@ -47,7 +46,6 @@ export function PlayingCard({
   ariaLabel,
   ariaPressed,
   caption,
-  showCorner = false,
   onMouseEnter,
   onMouseLeave,
 }: PlayingCardProps) {
@@ -90,9 +88,6 @@ export function PlayingCard({
 
   const content = (
     <>
-      {showCorner && face === 'up' && value && (
-        <span className="absolute top-[7px] left-[9px] text-[13px] font-display">{value}</span>
-      )}
       <span className="pointer-events-none">{face === 'down' ? '' : face === 'slot' ? '…' : value}</span>
       {caption && (
         <span className="absolute bottom-[6px] left-0 right-0 text-center text-[9px] font-sans font-bold uppercase tracking-[.14em] text-card-accent">

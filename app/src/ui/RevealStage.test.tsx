@@ -68,11 +68,9 @@ describe('RevealStage', () => {
 
   it('shows every voter’s card to a guest, not just their own', () => {
     render(<RevealStage {...guestProps({ votes: { p1: '3', p2: '13' } })} />);
-    // showCorner duplicates the value (once as the corner index, once centred), so each value
-    // legitimately matches twice within a single card — getAllByText, not getByText.
     const cards = within(screen.getByRole('list', { name: /revealed cards/i }));
-    expect(cards.getAllByText('3').length).toBeGreaterThan(0);
-    expect(cards.getAllByText('13').length).toBeGreaterThan(0);
+    expect(cards.getByText('3')).toBeInTheDocument();
+    expect(cards.getByText('13')).toBeInTheDocument();
   });
 
   it('keeps host controls away from guests', () => {

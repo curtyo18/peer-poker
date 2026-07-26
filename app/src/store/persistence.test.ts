@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadName, saveName, loadDecks, saveDecks, loadRoomCode, saveRoomCode, clearRoomCode } from './persistence';
+import {
+  loadName, saveName, loadDecks, saveDecks, loadRoomCode, saveRoomCode, clearRoomCode,
+  loadLastHostRoomName, saveLastHostRoomName, loadLastJoinCode, saveLastJoinCode,
+} from './persistence';
 import { BUILTIN_DECKS, FIBONACCI, TSHIRT, newDeck } from '../domain/decks';
 
 beforeEach(() => localStorage.clear());
@@ -41,5 +44,23 @@ describe('persistence', () => {
     expect(loadRoomCode()).toBe('acme-standup');
     clearRoomCode();
     expect(loadRoomCode()).toBeNull();
+  });
+
+  it('round-trips the last host room name', () => {
+    saveLastHostRoomName('FROG-42');
+    expect(loadLastHostRoomName()).toBe('FROG-42');
+  });
+
+  it('returns empty last host room name when unset', () => {
+    expect(loadLastHostRoomName()).toBe('');
+  });
+
+  it('round-trips the last join code', () => {
+    saveLastJoinCode('FROG-42');
+    expect(loadLastJoinCode()).toBe('FROG-42');
+  });
+
+  it('returns empty last join code when unset', () => {
+    expect(loadLastJoinCode()).toBe('');
   });
 });

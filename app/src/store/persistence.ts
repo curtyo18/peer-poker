@@ -8,6 +8,8 @@ const K = {
   session: 'poker.session',
   hostPeerId: 'poker.hostPeerId',
   roomCode: 'poker.roomCode',
+  lastHostRoomName: 'poker.lastHostRoomName',
+  lastJoinCode: 'poker.lastJoinCode',
 } as const;
 
 function get(key: string): string | null {
@@ -47,3 +49,11 @@ export const saveHostPeerId = (id: string): void => set(K.hostPeerId, id);
 export const loadRoomCode = (): string | null => get(K.roomCode);
 export const saveRoomCode = (code: string): void => set(K.roomCode, code);
 export const clearRoomCode = (): void => remove(K.roomCode);
+
+// Deliberately outlives a session: ending or discarding a session clears poker.session and
+// poker.roomCode, but not these — the point is to save retyping the same recurring room next time.
+export const loadLastHostRoomName = (): string => get(K.lastHostRoomName) ?? '';
+export const saveLastHostRoomName = (name: string): void => set(K.lastHostRoomName, name);
+
+export const loadLastJoinCode = (): string => get(K.lastJoinCode) ?? '';
+export const saveLastJoinCode = (code: string): void => set(K.lastJoinCode, code);
