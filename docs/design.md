@@ -187,7 +187,7 @@ src/
   domain/
     decks.ts                     // built-in Fibonacci, deck CRUD, validation
     entry.ts                     // landing | resume | join, from the URL and this device
-    hostActions.ts               // add/edit/skip/reorder items, reveal, re-vote, accept
+    hostActions.ts               // add/edit/skip items, set active, reveal, re-vote, accept
     voting.ts                    // distribution + stats, suggested estimate, outlier
   theme/
     theme.ts                     // read/apply/persist 'dark' | 'light'; default dark

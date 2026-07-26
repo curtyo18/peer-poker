@@ -94,9 +94,31 @@ describe('RevealStage', () => {
     expect(screen.queryByText('MODE')).not.toBeInTheDocument();
   });
 
-  it('tells a kicked guest they were removed', () => {
+  // Same as the voting stage: the kicked guest's state still seats them, so the notice has to
+  // replace the reveal rather than appear beneath a hand they can no longer play from.
+  it('replaces the reveal for a kicked guest rather than sitting under it', () => {
     render(<RevealStage {...guestProps({ terminal: 'kicked' })} />);
     expect(screen.getByRole('heading', { name: /removed/i })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /card hand/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/you played/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: /revealed cards/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /back to start/i })).toBeInTheDocument();
+  });
+
+  it('lets an observer take a seat, since votes are still open here', async () => {
+    render(
+      <RevealStage
+        {...guestProps({
+          votes: { p2: '5' },
+          participants: [
+            { peerId: 'p1', name: 'Ana', role: 'observer', connected: true },
+            { peerId: 'p2', name: 'Ben', role: 'voter', connected: true },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText(/you're observing/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /take a seat/i })).toBeInTheDocument();
   });
 
   it('accepts the chosen value and advances to the next pending item', async () => {
@@ -172,16 +194,4 @@ describe('RevealStage', () => {
     expect(screen.queryByText(/you played/i)).not.toBeInTheDocument();
   });
 
-  it('says nothing about the round to a guest who no longer has a seat', () => {
-    const props = guestProps({ terminal: 'kicked' });
-    render(
-      <RevealStage
-        {...props}
-        state={{ ...props.state, participants: props.state.participants.slice(1) }}
-      />,
-    );
-    expect(screen.queryByText(/you're observing/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/you played/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /removed/i })).toBeInTheDocument();
-  });
 });

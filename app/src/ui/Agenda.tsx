@@ -14,6 +14,8 @@ import {
 interface AgendaProps {
   state: SessionState;
   onMutate: (fn: (s: SessionState) => SessionState) => void;
+  /** Applied to the panel itself — the console emphasises this one with a gold edge. */
+  className?: string;
 }
 
 function itemDotTone(item: AgendaItem, isActive: boolean): 'success' | 'accent' | 'muted' {
@@ -35,7 +37,7 @@ function urlPreview(url: string): string {
   }
 }
 
-export function Agenda({ state, onMutate }: AgendaProps) {
+export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export function Agenda({ state, onMutate }: AgendaProps) {
     // tabIndex -1 so focus has somewhere to land after a menu action: the item that was focused,
     // and often the row anchoring it, both unmount — see useRowMenu.
     <div ref={menu.containerRef} tabIndex={-1} className="outline-none">
-      <Panel>
+      <Panel className={className}>
         <div className="mb-4 flex items-baseline justify-between gap-3">
           <div>
             <Kicker>Agenda</Kicker>

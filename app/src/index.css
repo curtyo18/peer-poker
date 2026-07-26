@@ -151,7 +151,6 @@
   --color-verdict-num: var(--color-verdict-num);
   --color-link: var(--color-link);
   --color-outlier: var(--color-outlier);
-  --color-placeholder: var(--color-placeholder);
   --color-felt-1: var(--color-felt-1);
   --color-felt-2: var(--color-felt-2);
   --color-felt-3: var(--color-felt-3);
@@ -174,10 +173,6 @@
   --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Space Mono', ui-monospace, monospace;
 
-  --animate-flip: flip 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-pop: pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-fall: fall linear infinite;
-  --animate-pulse-ring: pulse-ring 2.4s infinite;
   --animate-spin-slow: spin 0.8s linear infinite;
   --animate-ppfade: ppfade 0.3s ease;
 }
@@ -199,20 +194,8 @@
   }
 }
 
-@keyframes pop {
-  0% {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-  60% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
+/* `flip` and `fall` are applied as inline `animation:` shorthands (PlayingCard, RevealStage's
+   Confetti) rather than through an --animate-* token, so no Tailwind utility references them. */
 @keyframes fall {
   0% {
     transform: translateY(-40px) rotate(0deg);
@@ -224,15 +207,6 @@
   100% {
     transform: translateY(320px) rotate(320deg);
     opacity: 0;
-  }
-}
-
-@keyframes pulse-ring {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(217, 180, 91, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(217, 180, 91, 0);
   }
 }
 

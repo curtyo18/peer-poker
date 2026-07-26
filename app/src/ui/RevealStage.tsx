@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { AgendaItem, CardValue, SessionState } from '../domain/types';
+import { getGuest } from '../net/live';
 import { voteStats, suggestedValue, outlierValue } from '../domain/voting';
 import { accept, revote, setActive } from '../domain/hostActions';
 import { CardHand } from './CardHand';
-import { ConnState } from './ConnState';
+import { DeadRoom } from './ConnState';
 import { Histogram } from './Histogram';
 import { LinkedTitle } from './LinkedTitle';
 import { PlayingCard } from './PlayingCard';
@@ -58,6 +59,13 @@ function Confetti() {
 export function RevealStage(props: RevealStageProps) {
   const { state, item, myPeerId, onVote } = props;
 
+  // A kick or an ended session closes this guest's connection before the host broadcasts
+  // the roster without them, so `state` still seats them and every control below would
+  // still render, wired to a connection that is already gone. Hand over instead.
+  if (props.role === 'guest' && props.terminal) {
+    return <DeadRoom terminal={props.terminal} onLeave={props.onLeave} />;
+  }
+
   const me = state.participants.find((p) => p.peerId === myPeerId);
   // Three seats, not two: a host who chose not to play is never seated at all, and a kicked guest
   // stops being seated mid-round. Collapsing "no record" into "observer" tells a host they are
@@ -76,6 +84,13 @@ export function RevealStage(props: RevealStageProps) {
   // while the host is reading, and a host who has picked something never has it yanked back.
   const [override, setOverride] = useState<CardValue | null>(null);
   const chosen = override ?? suggested ?? '';
+
+  // Guest-only, same as the lobby's and the voting stage's. It belongs here because this branch
+  // keeps votes open until the estimate is accepted, so "take a seat" is still a real offer.
+  const handleToggleRole = () => {
+    if (!me) return;
+    getGuest()?.changeRole(me.role === 'observer' ? 'voter' : 'observer');
+  };
 
   const showStats = stats.mode.length > 0 || stats.min !== null;
   const nobodyVoted = revealedVoters.length === 0 && Object.keys(item.votes).length === 0;
@@ -253,21 +268,23 @@ export function RevealStage(props: RevealStageProps) {
             <ResultsExport state={state} onEnd={props.onEnd} />
           </>
         ) : (
-          <>
-            {seat !== 'none' && (
-              <div className="flex items-center gap-2.5 text-[13px] text-muted">
-                <StatusDot tone="success" />
-                {seat === 'observer'
-                  ? "You're observing. The host accepts a value or starts a re-vote."
-                  : myVote !== undefined
-                    ? `You played ${myVote} — change it any time until the host accepts a value or starts a re-vote.`
-                    : "You didn't play this round — you still can, until the host accepts a value."}
-              </div>
-            )}
-            {/* Being kicked or having the room closed does not clear the last state we were sent,
-                so without this a removed guest waits in a dead room forever. */}
-            <ConnState terminal={props.terminal} connected onLeave={props.onLeave} />
-          </>
+          seat !== 'none' && (
+            <div className="flex flex-wrap items-center gap-2.5 text-[13px] text-muted">
+              <StatusDot tone="success" />
+              {seat === 'observer'
+                ? "You're observing. The host accepts a value or starts a re-vote."
+                : myVote !== undefined
+                  ? `You played ${myVote} — change it any time until the host accepts a value or starts a re-vote.`
+                  : "You didn't play this round — you still can, until the host accepts a value."}
+              {/* Votes stay open until the estimate is accepted, so an observer watching the
+                  reveal can still decide to play — this was the one screen not offering it. */}
+              {seat === 'observer' && (
+                <Button variant="secondary" size="sm" onClick={handleToggleRole}>
+                  Take a seat
+                </Button>
+              )}
+            </div>
+          )
         )}
       </div>
     </main>

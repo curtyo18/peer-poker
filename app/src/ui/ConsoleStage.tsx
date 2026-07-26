@@ -1,7 +1,7 @@
 import type { SessionState } from '../domain/types';
 import { getGuest } from '../net/live';
 import { Agenda } from './Agenda';
-import { ConnState } from './ConnState';
+import { DeadRoom } from './ConnState';
 import { ResultsExport } from './ResultsExport';
 import { ShareBar } from './ShareBar';
 import { TableCard } from './TableCard';
@@ -42,6 +42,13 @@ const CHECKLIST_STEPS = [
 
 export function ConsoleStage(props: ConsoleStageProps) {
   const { role, state, roomCode, onLeave } = props;
+
+  // A kick or an ended session closes this guest's connection before the host broadcasts the
+  // roster without them, so `state` still seats them and the lobby below would still render
+  // its role toggle, wired to a connection that is already gone. Hand over instead.
+  if (role === 'guest' && props.terminal) {
+    return <DeadRoom terminal={props.terminal} onLeave={onLeave} />;
+  }
   const roomLabel = roomCode?.toUpperCase() ?? state.roomId;
 
   // Guest-only: identical to ParticipantView's role toggle, since the waiting lobby needs the
@@ -110,9 +117,14 @@ export function ConsoleStage(props: ConsoleStageProps) {
             <TableCard state={state} isHost onKick={props.onKick} />
           </div>
           <div className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-border-gold">
-              <Agenda state={state} onMutate={props.onMutate} />
-            </div>
+            {/* The gold edge goes on the panel, not around it: a wrapper drew a second ring
+                just outside Panel's own border. Set as an arbitrary property because Tailwind
+                emits `border-border-gold` before `border-border`, so the plain class loses. */}
+            <Agenda
+              state={state}
+              onMutate={props.onMutate}
+              className="[border-color:var(--color-border-gold)]"
+            />
             {/* A host who has finished every item lands back here, so ending the session and
                 exporting what it produced have to be reachable without an active round. */}
             <ResultsExport state={state} onEnd={props.onEnd} />
@@ -125,13 +137,10 @@ export function ConsoleStage(props: ConsoleStageProps) {
             <p className="text-sm text-muted">Waiting for the host to start a round.</p>
             {me && (
               <Button variant="secondary" size="sm" className="mt-3" onClick={handleToggleRole}>
-                {me.role === 'observer' ? 'Take a seat' : '👁 Observe instead'}
+                {me.role === 'observer' ? 'Take a seat' : '\u{1F441} Observe instead'}
               </Button>
             )}
           </Panel>
-          {/* Being kicked or having the room closed does not clear the last state we were sent,
-              so without this a removed guest waits in a dead lobby forever. */}
-          <ConnState terminal={props.terminal} connected onLeave={onLeave} />
         </div>
       )}
     </main>

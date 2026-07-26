@@ -108,25 +108,18 @@ describe('VotingStage', () => {
     expect(played.getByText('Ben').closest('li')).toHaveTextContent('still thinking');
   });
 
-  it('tells a kicked guest they were removed, instead of showing a live-looking room', () => {
-    render(<VotingStage {...guestProps({ terminal: 'kicked' })} />);
+  // A kick closes the guest's connection before the host broadcasts the roster without them, so
+  // their last state still seats them. The notice alone is not enough — the round has to go, or
+  // they are left with a live-looking hand wired to a connection that is already gone.
+  it('replaces the round for a kicked guest rather than sitting under it', () => {
+    render(<VotingStage {...guestProps({ terminal: 'kicked', votes: { p1: '5' } })} />);
     expect(screen.getByRole('heading', { name: /removed/i })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /card hand/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/your card's in/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: /who has voted/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /back to start/i })).toBeInTheDocument();
   });
 
-  // A kick removes the participant, so the viewer has no seat. Saying "you're observing" over the
-  // top of "you were removed" is worse than saying nothing about the round at all.
-  it('does not describe the round to a guest who no longer has a seat', () => {
-    const props = guestProps({ terminal: 'kicked', votes: {} });
-    render(
-      <VotingStage
-        {...props}
-        state={{ ...props.state, participants: props.state.participants.slice(1) }}
-      />,
-    );
-    expect(screen.queryByText(/you're observing/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/play a card/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /removed/i })).toBeInTheDocument();
-  });
 
   it('flags a seated player who has dropped off, rather than showing them as thinking', () => {
     const props = hostProps({

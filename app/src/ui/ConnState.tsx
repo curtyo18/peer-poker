@@ -39,6 +39,31 @@ interface ConnStateProps {
   onLeave: () => void;
 }
 
+/**
+ * What a guest sees once the room is over for them.
+ *
+ * A kick closes their connection *before* the host broadcasts the roster without them
+ * (`hostConn.kick`), so a removed guest keeps the last state they were sent — one that still
+ * seats them, still shows their card, and still offers a deck to play from. Rendering the
+ * terminal notice underneath all that leaves live-looking controls wired to a closed
+ * connection. So the stages hand over to this instead of drawing the round at all.
+ */
+export function DeadRoom({
+  terminal,
+  roomCode,
+  onHostRoom,
+  onLeave,
+}: Omit<ConnStateProps, 'connected'>) {
+  return (
+    <main
+      className="mx-auto max-w-[760px] px-[26px] pt-6 pb-20"
+      style={{ animation: 'var(--animate-ppfade)' }}
+    >
+      <ConnState terminal={terminal} roomCode={roomCode} onHostRoom={onHostRoom} onLeave={onLeave} />
+    </main>
+  );
+}
+
 export function ConnState({
   terminal,
   connected = false,

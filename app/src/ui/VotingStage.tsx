@@ -2,10 +2,10 @@ import type { AgendaItem, CardValue, SessionState } from '../domain/types';
 import { getGuest } from '../net/live';
 import { reveal, skipItem } from '../domain/hostActions';
 import { CardHand } from './CardHand';
-import { ConnState } from './ConnState';
+import { DeadRoom } from './ConnState';
 import { LinkedTitle } from './LinkedTitle';
 import { PlayingCard } from './PlayingCard';
-import { Button, DisplayHeading, Kicker, Panel, PlayerPill, StatusDot, insetClass } from './primitives';
+import { Avatar, Button, DisplayHeading, Kicker, Panel, PlayerPill, StatusDot, insetClass } from './primitives';
 
 type VotingStageProps = {
   state: SessionState;
@@ -22,11 +22,15 @@ type VotingStageProps = {
     }
 );
 
-const pillGhostClass =
-  'inline-flex items-center rounded-full border border-border-strong bg-transparent px-3 py-1.5 text-xs font-medium text-fg-2 transition-colors hover:border-accent hover:text-accent';
-
 export function VotingStage(props: VotingStageProps) {
   const { state, item, myPeerId, onVote } = props;
+
+  // A kick or an ended session closes this guest's connection before the host broadcasts
+  // the roster without them, so `state` still seats them and every control below would
+  // still render, wired to a connection that is already gone. Hand over instead.
+  if (props.role === 'guest' && props.terminal) {
+    return <DeadRoom terminal={props.terminal} onLeave={props.onLeave} />;
+  }
 
   const me = state.participants.find((p) => p.peerId === myPeerId);
   const voters = state.participants.filter((p) => p.role === 'voter');
@@ -53,9 +57,9 @@ export function VotingStage(props: VotingStageProps) {
             <Kicker tone="muted">Table &middot; {voters.length} seated</Kicker>
             <div className="flex items-center gap-3">
               {props.role === 'guest' && me && (
-                <button type="button" className={pillGhostClass} onClick={handleToggleRole}>
+                <Button variant="secondary" size="sm" onClick={handleToggleRole}>
                   {me.role === 'voter' ? '👁 Observe instead' : 'Take a seat'}
-                </button>
+                </Button>
               )}
               <span className="text-[12.5px] font-semibold text-accent-soft">
                 {votedCount} of {voters.length} voted
@@ -111,7 +115,8 @@ export function VotingStage(props: VotingStageProps) {
                   <PlayingCard face={voted ? 'down' : 'slot'} size="sm" />
                   {/* The face-down card and the dashed slot are the only visible difference
                       between having played and not, so the state has to be said in words too. */}
-                  <span className={`text-xs ${voted ? 'text-fg-2' : 'text-muted'}`}>
+                  <span className={`flex items-center gap-1.5 text-xs ${voted ? 'text-fg-2' : 'text-muted'}`}>
+                    <Avatar name={p.name} size="sm" isSelf={p.peerId === myPeerId} dimmed={!voted} />
                     {p.name}
                     <span className="sr-only">{voted ? ' — card played' : ' — still thinking'}</span>
                   </span>
@@ -179,8 +184,8 @@ export function VotingStage(props: VotingStageProps) {
           </div>
         ) : (
           <>
-            {/* Nothing at all when the viewer has no seat — a kicked guest is told what actually
-                happened by the ConnState alert below, not by a line about the round. */}
+            {/* Nothing at all when the viewer has no seat — a host who chose not to play has
+                no participant record, and a line about "your card" would be addressed to nobody. */}
             {seat !== 'none' && (
               <div className="flex items-center gap-2.5 text-[13px] text-muted">
                 <StatusDot tone="success" />
@@ -191,9 +196,6 @@ export function VotingStage(props: VotingStageProps) {
                     : "Play a card when you're ready — the host reveals when everyone's in."}
               </div>
             )}
-            {/* Being kicked or having the room closed does not clear the last state we were sent,
-                so without this a removed guest waits in a dead room forever. */}
-            <ConnState terminal={props.terminal} connected onLeave={props.onLeave} />
           </>
         )}
       </div>

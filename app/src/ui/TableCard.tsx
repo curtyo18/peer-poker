@@ -19,7 +19,7 @@ export function TableCard({ state, isHost, onKick }: TableCardProps) {
     <div ref={menu.containerRef} tabIndex={-1} className="outline-none">
       <Panel>
         <div className="mb-3.5 flex items-baseline justify-between">
-          <Kicker>Table</Kicker>
+          <Kicker tone="muted">Table</Kicker>
           <span className="text-xs text-muted">{state.participants.length} seated</span>
         </div>
         <ul className="flex flex-col">
@@ -43,11 +43,9 @@ export function TableCard({ state, isHost, onKick }: TableCardProps) {
                   {!p.connected && <span className="sr-only"> (disconnected)</span>}
                 </span>
                 {p.role === 'observer' && <Badge tone="neutral">Observer</Badge>}
-                {isRoomHost && (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-muted">
-                    <StatusDot tone="success" glow={false} /> host
-                  </span>
-                )}
+                {/* No dot on this label: the avatar already carries one for presence, and a
+                    second green dot on the same row would be saying something else entirely. */}
+                {isRoomHost && <span className="text-[11px] text-muted">host</span>}
                 {canKick && (
                   <div
                     className="relative"
