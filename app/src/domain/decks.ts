@@ -41,9 +41,12 @@ export function isBuiltinDeck(id: string): boolean {
  * code (e.g. adding a card) silently never reaches anyone who already had it cached.
  */
 export function seedDecks(saved: Deck[]): Deck[] {
-  const current = saved.map((d) => BUILTIN_DECKS.find((b) => b.id === d.id) ?? d);
+  const current = saved.map((d) => {
+    const builtin = BUILTIN_DECKS.find((b) => b.id === d.id);
+    return builtin ? { ...builtin } : d;
+  });
   const missing = BUILTIN_DECKS.filter((b) => !saved.some((d) => d.id === b.id));
-  return missing.length === 0 ? current : [...missing, ...current];
+  return missing.length === 0 ? current : [...missing.map((b) => ({ ...b })), ...current];
 }
 
 export function validateDeck(deck: Deck): string | null {

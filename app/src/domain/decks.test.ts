@@ -28,6 +28,7 @@ describe('decks', () => {
     const seeded = seedDecks([staleFibonacci]);
     expect(seeded).toContainEqual(FIBONACCI);
     expect(seeded).not.toContainEqual(staleFibonacci);
+    expect(seeded.filter((d) => d.id === FIBONACCI.id)).toHaveLength(1);
   });
 
   // The regression this guards: seeding used to check for Fibonacci alone and return early when
