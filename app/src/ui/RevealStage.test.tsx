@@ -105,6 +105,19 @@ describe('RevealStage', () => {
     expect(screen.getByRole('button', { name: /back to start/i })).toBeInTheDocument();
   });
 
+  // A kick arrives as a prop change on an already-mounted stage, not as a fresh render, and that
+  // is the path the app actually takes. (It does not pin the rules-of-hooks violation that used
+  // to sit here: React's too-few-hooks check doesn't fire when a render produces zero hooks, so
+  // this passed against the broken code too. The lint rule is what guards that, now via CI.)
+  it('swaps a live reveal for the removal notice when the kick lands', () => {
+    const props = guestProps({ votes: { p1: '5', p2: '8' } });
+    const { rerender } = render(<RevealStage {...props} />);
+    expect(screen.getByText(/the reveal/i)).toBeInTheDocument();
+    rerender(<RevealStage {...props} terminal="kicked" />);
+    expect(screen.getByRole('heading', { name: /removed/i })).toBeInTheDocument();
+    expect(screen.queryByText(/the reveal/i)).not.toBeInTheDocument();
+  });
+
   it('lets an observer take a seat, since votes are still open here', async () => {
     render(
       <RevealStage

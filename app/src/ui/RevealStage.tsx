@@ -59,13 +59,6 @@ function Confetti() {
 export function RevealStage(props: RevealStageProps) {
   const { state, item, myPeerId, onVote } = props;
 
-  // A kick or an ended session closes this guest's connection before the host broadcasts
-  // the roster without them, so `state` still seats them and every control below would
-  // still render, wired to a connection that is already gone. Hand over instead.
-  if (props.role === 'guest' && props.terminal) {
-    return <DeadRoom terminal={props.terminal} onLeave={props.onLeave} />;
-  }
-
   const me = state.participants.find((p) => p.peerId === myPeerId);
   // Three seats, not two: a host who chose not to play is never seated at all, and a kicked guest
   // stops being seated mid-round. Collapsing "no record" into "observer" tells a host they are
@@ -84,6 +77,15 @@ export function RevealStage(props: RevealStageProps) {
   // while the host is reading, and a host who has picked something never has it yanked back.
   const [override, setOverride] = useState<CardValue | null>(null);
   const chosen = override ?? suggested ?? '';
+
+  // Below every hook, deliberately: this returns on some renders and not others, so anything
+  // above it would be called conditionally and React would see the hook count change the moment
+  // a guest is kicked. A kick or an ended session closes their connection before the host
+  // broadcasts the roster without them, so `state` still seats them and every control below
+  // would otherwise render, wired to a connection that is already gone.
+  if (props.role === 'guest' && props.terminal) {
+    return <DeadRoom terminal={props.terminal} onLeave={props.onLeave} />;
+  }
 
   // Guest-only, same as the lobby's and the voting stage's. It belongs here because this branch
   // keeps votes open until the estimate is accepted, so "take a seat" is still a real offer.
