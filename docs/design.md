@@ -95,6 +95,7 @@ interface Participant {
 interface AgendaItem {
   id: string;                          // uuid
   title: string;                       // "" allowed (one-off unnamed round)
+  url?: string;                        // optional reference link; the title becomes it (ADR 0003)
   status: 'pending' | 'voting' | 'revealed' | 'accepted';
   votes: Record<string, CardValue>;    // peerId -> value (only for current round)
   acceptedEstimate: CardValue | null;
@@ -133,6 +134,20 @@ flips the `data-theme` attribute and writes `poker.theme`. On boot, read `poker.
 (default `'dark'`) and set the attribute before first paint to avoid FOUC. `color-scheme`
 follows the active theme so native controls repaint correctly.
 
+The palette itself comes from the 2026-07-25 design handoff, whose table is the dark theme
+verbatim. **Light is derived, not designed**, under a rule written into `src/index.css`:
+surfaces invert to warm cream, the card faces and the felt do not change because they are the
+product's identity, and every other foreground darkens until it *measures* ≥4.5:1 against `bg`,
+`surface` and `surface-2` — `bg` is the tightest of the three. Add a token to the light block
+whenever you add one to dark, and measure rather than assert; several tokens have missed the
+floor by a tenth while looking fine. Contrast for text on a *tinted* panel has to be measured
+on the composite: the "voted" pill draws its tick on its own `bg-ready/10` fill, which lifts
+the backdrop out from under it.
+
+Fonts (Playfair Display, Public Sans, Space Mono) are **self-hosted via Fontsource** and
+bundled by Vite. No request ever reaches `fonts.googleapis.com` — ADR 0001's no-third-party-
+contact posture rules it out. The OFL licence is served at `app/public/OFL.txt`.
+
 ## Message protocol (over DataConnection)
 
 All messages are JSON `{ type, ...payload }`. **Participant → host** are *intents*;
@@ -160,8 +175,8 @@ peer whose `role !== 'voter'`, or for a non-active item, is ignored.
 
 ```
 src/
-  main.tsx                       // mount, dark theme
-  App.tsx                        // routes between Landing / Host / Participant by URL + role
+  main.tsx                       // mount, self-hosted fonts, theme before first paint
+  App.tsx                        // entry mode: landing | join | host | guest
   store/
     session.ts                   // Zustand store: canonical state (host) or mirror (peer)
     persistence.ts               // localStorage read/write (name, decks, session mirror)
@@ -171,23 +186,40 @@ src/
     guestConn.ts                 // participant: connect to host, send intents, receive state
   domain/
     decks.ts                     // built-in Fibonacci, deck CRUD, validation
-    voting.ts                    // reveal/re-vote/accept logic, vote distribution + stats
+    entry.ts                     // landing | resume | join, from the URL and this device
+    hostActions.ts               // add/edit/skip/reorder items, reveal, re-vote, accept
+    voting.ts                    // distribution + stats, suggested estimate, outlier
   theme/
     theme.ts                     // read/apply/persist 'dark' | 'light'; default dark
   ui/
+    AppHeader.tsx                // logo/home, room chip, privacy, theme toggle
     ThemeToggle.tsx              // dark/light switch, persists to poker.theme
     PrivacyExplainer.tsx         // "How does this work?" plain-language privacy panel
-    Landing.tsx                  // create session | join session | manage decks
-    HostView.tsx                 // agenda mgmt + facilitation controls
-    ParticipantView.tsx          // card hand + current item + results
-    CardHand.tsx                 // renders deck as selectable cards
-    Agenda.tsx                   // item list (add/reorder/remove/select)
-    RevealPanel.tsx              // vote distribution, stats, accept control
+    Landing.tsx                  // host-primary: start a session, or enter a code
+    JoinScreen.tsx               // ?room= arrival; confirms a remembered name (ADR 0004)
+    RoomView.tsx                 // stage router: console | voting | reveal, fanned on role
+    ConsoleStage.tsx             // host console (checklist + table + agenda) / guest lobby
+    VotingStage.tsx              // who's voted, played cards, picker, role action bar
+    RevealStage.tsx              // revealed cards, histogram, verdict, stats, accept
+    Agenda.tsx                   // item list: add with URL, overflow menu, linked titles
+    LinkedTitle.tsx              // item title, an anchor when `url` is set — one rule, three screens
+    Histogram.tsx                // distribution bars over the deck axis
+    TableCard.tsx                // seated players; host-only remove, in a per-row menu
+    ShareBar.tsx                 // share URL + copy + collapsible QR
+    CardHand.tsx                 // renders deck as a selectable fan
+    PlayingCard.tsx              // one card: face up / face down / empty slot
+    rowMenu.ts                   // the row-anchored `⋯` menu: one open, Escape, focus recovery
     DeckManager.tsx              // create/edit/delete named decks
-    ParticipantList.tsx          // roster with connection status + roles
-    ResultsExport.tsx            // copy / CSV / JSON at session end
+    ResultsExport.tsx            // copy / CSV / JSON, and End session
     ConnState.tsx                // connection status + no-TURN failure messaging
+    primitives.tsx               // Button/Panel/Kicker/Avatar/StatTile/PlayerPill + class consts
 ```
+
+`RoomView` derives the stage from session state — no active item is the console, an active
+item is voting, and `revealed` is the reveal — then fans out on a `role` prop. Each stage owns
+its own `<main>`. Host remains the sole writer: guests get `undefined` callbacks and the guest
+action bar. A stage that a guest can be looking at must render `ConnState`, because a kick or
+an ended session leaves the last `state` in place.
 
 ## Data flow — a voting round
 
@@ -195,13 +227,18 @@ src/
    `state` broadcast.
 2. Each voter picks a card → `castVote` intent → host records into `item.votes` → `state`
    broadcast. Peers see *who has voted* (not the value) via presence of their `peerId` in
-   `votes`. **A voter may re-pick freely until reveal** — a fresh `castVote` overwrites
-   their prior entry (the reducer keys votes by `peerId`), and the card hand stays enabled
-   showing their current pick highlighted. Votes lock only when the host reveals.
+   `votes`. **A voter may re-pick freely** — a fresh `castVote` overwrites their prior entry
+   (the reducer keys votes by `peerId`), and the card hand stays enabled showing their current
+   pick highlighted.
 3. Host clicks **Reveal** → `revealed=true` → `state` broadcast. All clients render actual
-   values + distribution/stats (min/max/mode/spread) from `domain/voting.ts`.
+   values + distribution/stats (min/max/mode/spread) from `domain/voting.ts`, plus the
+   suggested estimate and the outlier the histogram paints rust.
+   **Votes do not lock here.** The reveal screen hands everyone the deck again and says so,
+   because seeing the table is exactly when someone changes their mind. The cut-off is the
+   accepted estimate: `castVote` is refused once `item.status === 'accepted'`.
 4. Host either **Re-vote** (clear votes, `revealed=false`, discuss & repeat) or **Accept**
-   (`acceptedEstimate` set, `status='accepted'`) → advance to next item.
+   (`acceptedEstimate` set, `status='accepted'`) → advance to the next `pending` item, or back
+   to the console when there is none left.
 5. At session end, `ResultsExport` reads accepted estimates across all items → copy / CSV /
    JSON download.
 
@@ -253,7 +290,8 @@ src/
 - Any hosted persistence, accounts, or auth.
 - More than ~10 concurrent participants; mesh topologies.
 - Integrations with Jira/GitHub/etc. for ticket import or estimate write-back (export is
-  copy/CSV/JSON only).
+  copy/CSV/JSON only). An item may carry a plain reference URL that renders its title as a
+  link, but nothing is fetched, parsed or looked up (see ADR 0003).
 - Spectator chat / video / audio.
 - Mobile-native apps (responsive web only).
 - Internationalisation.

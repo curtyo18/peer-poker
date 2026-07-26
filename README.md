@@ -10,9 +10,12 @@ the room over WebRTC** and never touch a server.
   tickets. No TURN relay.
 - **Decks** — Fibonacci built in; create your own (numbers, T-shirt sizes, `?`, `☕`).
   Multiple named decks, remembered locally.
-- **Sessions** — pre-plan an agenda, add tickets ad-hoc mid-meeting, or just run a one-off
-  quick vote. Host reveals when ready; re-vote to converge; accept a final estimate per item.
-- **Change your mind** — re-pick your card freely until the host reveals.
+- **Sessions** — pre-plan an agenda or add items ad-hoc mid-meeting. Host reveals when ready;
+  re-vote to converge; accept a final estimate per item.
+- **Reference links** — give an item a URL and its title becomes a link everyone at the table
+  can click. Nothing is fetched or looked up; it's a link, not an integration.
+- **Change your mind** — re-pick your card freely, right up until the host accepts a value.
+  Seeing the table is exactly when people reconsider.
 - **Yours to theme** — dark by default, switch to light any time.
 - **Export** — copy / CSV / JSON of the agreed estimates at the end.
 
@@ -31,7 +34,8 @@ npm run dev     # http://localhost:8000/peer-poker/
 ## Status
 
 Early build. Design in [`docs/design.md`](docs/design.md), implementation plan in
-[`docs/plan.md`](docs/plan.md), key decisions in [`docs/adr/`](docs/adr/).
+[`docs/plan.md`](docs/plan.md), key decisions in [`docs/adr/`](docs/adr/). The manual
+two-browser pass that the automated suite cannot cover is in [`app/SMOKE.md`](app/SMOKE.md).
 
 ## Stack
 
