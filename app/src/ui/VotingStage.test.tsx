@@ -11,6 +11,7 @@ interface Overrides {
   participants?: Participant[];
   myPeerId?: string;
   terminal?: 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
+  nudgeSignal?: number;
 }
 
 // Split by role rather than switched on a `role` override, so each helper's return type is the
@@ -44,12 +45,14 @@ const hostProps = (overrides: Overrides = {}) => ({
   ...base(overrides),
   role: 'host' as const,
   onMutate: vi.fn(),
+  onNudge: vi.fn(),
 });
 
 const guestProps = (overrides: Overrides = {}) => ({
   ...base(overrides),
   role: 'guest' as const,
   terminal: overrides.terminal ?? null,
+  nudgeSignal: overrides.nudgeSignal ?? 0,
   onLeave: vi.fn(),
 });
 
@@ -162,5 +165,94 @@ describe('VotingStage', () => {
     render(<VotingStage {...props} />);
     await userEvent.click(screen.getByRole('button', { name: /play 8/i }));
     expect(props.onVote).toHaveBeenCalledWith('8');
+  });
+});
+
+describe('VotingStage — nudging the people who have not voted', () => {
+  const nudgeButton = () => screen.getByRole('button', { name: /^nudge/i });
+
+  it('offers the host a nudge counting only the seated voters still holding a card', () => {
+    render(<VotingStage {...hostProps()} />);
+    expect(nudgeButton()).toHaveAccessibleName('Nudge 1 player who has not voted');
+    expect(nudgeButton()).toHaveTextContent('Nudge unvoted (1)');
+  });
+
+  it('does not count observers among the unvoted', () => {
+    render(
+      <VotingStage
+        {...hostProps({
+          votes: { p1: '5' },
+          participants: [
+            { peerId: 'p1', name: 'Ana', role: 'voter', connected: true },
+            { peerId: 'p2', name: 'Ben', role: 'observer', connected: true },
+          ],
+        })}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /^nudge/i })).not.toBeInTheDocument();
+  });
+
+  it('disappears once everybody has played', () => {
+    render(<VotingStage {...hostProps({ votes: { p1: '5', p2: '8' } })} />);
+    expect(screen.queryByRole('button', { name: /^nudge/i })).not.toBeInTheDocument();
+  });
+
+  it('is never offered to a guest', () => {
+    render(<VotingStage {...guestProps({ votes: {} })} />);
+    expect(screen.queryByRole('button', { name: /^nudge/i })).not.toBeInTheDocument();
+  });
+
+  it('sends the nudge and confirms who it went to', async () => {
+    const props = hostProps();
+    render(<VotingStage {...props} />);
+    await userEvent.click(nudgeButton());
+
+    expect(props.onNudge).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('status')).toHaveTextContent(/nudge sent to the 1 person/i);
+  });
+
+  // The guardrail: the confirmation's lifetime is the cooldown, so a host cannot spam-buzz.
+  it('refuses a second nudge while the confirmation is still up', async () => {
+    const props = hostProps();
+    render(<VotingStage {...props} />);
+    await userEvent.click(nudgeButton());
+    expect(nudgeButton()).toBeDisabled();
+
+    await userEvent.click(nudgeButton());
+    expect(props.onNudge).toHaveBeenCalledTimes(1);
+  });
+
+  it('prompts a guest who still owes a card', () => {
+    render(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 1 })} />);
+    const prompt = screen.getByText(/the host is waiting on your estimate/i);
+    expect(prompt).toBeInTheDocument();
+    expect(prompt.closest('[role="status"]')).not.toBeNull();
+  });
+
+  it('is ignored by a guest who has already played', () => {
+    render(<VotingStage {...guestProps({ votes: { p1: '5' }, myPeerId: 'p1', nudgeSignal: 1 })} />);
+    expect(screen.queryByText(/waiting on your estimate/i)).not.toBeInTheDocument();
+  });
+
+  it('is ignored by an observer', () => {
+    render(
+      <VotingStage
+        {...guestProps({
+          votes: {},
+          myPeerId: 'p2',
+          nudgeSignal: 1,
+          participants: [
+            { peerId: 'p1', name: 'Ana', role: 'voter', connected: true },
+            { peerId: 'p2', name: 'Ben', role: 'observer', connected: true },
+          ],
+        })}
+      />,
+    );
+    expect(screen.queryByText(/waiting on your estimate/i)).not.toBeInTheDocument();
+  });
+
+  it('shows no prompt to a guest nobody has nudged', () => {
+    render(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2' })} />);
+    expect(screen.queryByText(/waiting on your estimate/i)).not.toBeInTheDocument();
   });
 });

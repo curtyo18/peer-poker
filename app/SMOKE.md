@@ -42,6 +42,12 @@ production build.)
    - [ ] Voting: the pill row marks who is in, the played-card row shows
      face-down cards, and neither shows anyone's value.
    - [ ] The voter can pick a card, then **change** their pick.
+   - [ ] With the guest still holding their card, the host's table bar offers
+     **👋 Nudge unvoted (N)** with N matching who is actually outstanding.
+     Clicking it prompts the guest ("The host is waiting on your estimate")
+     and confirms on the host's side; the button is refused for ~3s after.
+     A guest who has **already voted**, and an observer, see nothing.
+     The pill is absent entirely once everyone is in.
    - [ ] Host reveals: every voter's card is visible **to the guest too**,
      with the histogram, verdict and LOW / MOST PICKED / HIGH tiles.
    - [ ] A card played **after** the reveal still counts and moves the stats.
@@ -49,7 +55,16 @@ production build.)
      advances to the next pending item (or back to the console if none).
    - [ ] Re-vote clears all picks and returns to the voting state.
    - [ ] Host reloads the tab and resumes: the share link is still valid,
-     and reconnecting peers land back in the table.
+     and reconnecting peers land back in the table. The Resume button shows
+     it is working rather than appearing to do nothing.
+   - [ ] Resume immediately after a reload, before the broker has released
+     the old peer id: instead of hanging, the host is told the id is still
+     held and offered **Try again** / **Resume on a new link**.
+   - [ ] Kill the host's signalling connection (devtools → Network →
+     Offline, or block `0.peerjs.com`) while a guest is mid-round. The
+     header's dot stops reading connected, a notice says existing players
+     are fine but nobody new can join, and the retries **space out** rather
+     than repeating every frame. Restoring the network clears it.
    - [ ] Host removes the guest: the guest is **told**, on whichever stage
      they were on, rather than sitting in a room that looks alive.
    - [ ] Host leaves the room: the guest is told the session ended.

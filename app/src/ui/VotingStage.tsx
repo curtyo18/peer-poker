@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { AgendaItem, CardValue, SessionState } from '../domain/types';
 import { getGuest } from '../net/live';
 import { reveal, skipItem } from '../domain/hostActions';
@@ -13,21 +14,55 @@ type VotingStageProps = {
   myPeerId: string | undefined;
   onVote: (value: CardValue) => void;
 } & (
-  | { role: 'host'; onMutate: (fn: (s: SessionState) => SessionState) => void }
+  | {
+      role: 'host';
+      onMutate: (fn: (s: SessionState) => SessionState) => void;
+      /** Ask everyone who has not played a card yet to play one. */
+      onNudge: () => void;
+    }
   | {
       role: 'guest';
       /** A kick or an ended session leaves the last state in place, so the stage must say so. */
       terminal: 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
+      /** Increments each time the host nudges the room. */
+      nudgeSignal: number;
       onLeave: () => void;
     }
 );
 
+// The confirmation banner's lifetime is also the cooldown: the host cannot nudge again while it
+// is on screen, so there is nothing to debounce separately and nothing to spam.
+const NUDGE_CONFIRM_MS = 3000;
+const NUDGE_PROMPT_MS = 6000;
+
 export function VotingStage(props: VotingStageProps) {
   const { state, item, myPeerId, onVote } = props;
+  const nudgeSignal = props.role === 'guest' ? props.nudgeSignal : 0;
+
+  // How many players the last nudge went out to, while the confirmation is up.
+  const [nudgeSentTo, setNudgeSentTo] = useState<number | null>(null);
+  const [nudged, setNudged] = useState(false);
+
+  useEffect(() => {
+    if (nudgeSentTo === null) return;
+    const timer = setTimeout(() => setNudgeSentTo(null), NUDGE_CONFIRM_MS);
+    return () => clearTimeout(timer);
+  }, [nudgeSentTo]);
+
+  // Keyed on the signal alone, so a later round cannot resurrect an old nudge. Whether it
+  // applies to *this* player is decided at render, which means playing a card dismisses it.
+  useEffect(() => {
+    if (nudgeSignal === 0) return;
+    setNudged(true);
+    const timer = setTimeout(() => setNudged(false), NUDGE_PROMPT_MS);
+    return () => clearTimeout(timer);
+  }, [nudgeSignal]);
 
   // A kick or an ended session closes this guest's connection before the host broadcasts
   // the roster without them, so `state` still seats them and every control below would
   // still render, wired to a connection that is already gone. Hand over instead.
+  // Below the hooks, not above them: a guard that skips a hook is a rules-of-hooks violation
+  // that React does not throw on, so lint is the only thing that catches it.
   if (props.role === 'guest' && props.terminal) {
     return <DeadRoom terminal={props.terminal} onLeave={props.onLeave} />;
   }
@@ -49,6 +84,16 @@ export function VotingStage(props: VotingStageProps) {
     getGuest()?.changeRole(me.role === 'observer' ? 'voter' : 'observer');
   };
 
+  const handleNudge = () => {
+    if (props.role !== 'host' || stillDeciding === 0 || nudgeSentTo !== null) return;
+    props.onNudge();
+    setNudgeSentTo(stillDeciding);
+  };
+
+  // A nudge is addressed to people who still owe a card. An observer does not, and neither does
+  // anyone who has already played — so for them nothing is shown at all.
+  const showNudgePrompt = props.role === 'guest' && nudged && seat === 'voter' && myVote === undefined;
+
   return (
     <main className="mx-auto max-w-[760px] px-[26px] pt-6 pb-20" style={{ animation: 'var(--animate-ppfade)' }}>
       <div className="flex flex-col gap-3.5">
@@ -61,11 +106,35 @@ export function VotingStage(props: VotingStageProps) {
                   {me.role === 'voter' ? '👁 Observe instead' : 'Take a seat'}
                 </Button>
               )}
+              {/* Host only, and gone entirely once there is nobody left to wait for. */}
+              {props.role === 'host' && stillDeciding > 0 && (
+                <button
+                  type="button"
+                  onClick={handleNudge}
+                  disabled={nudgeSentTo !== null}
+                  aria-label={`Nudge ${stillDeciding} ${stillDeciding === 1 ? 'player who has' : 'players who have'} not voted`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-accent/35 bg-accent/12 px-3 py-1 text-xs font-semibold text-accent-soft transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span aria-hidden="true">👋</span>
+                  <span aria-hidden="true">Nudge unvoted ({stillDeciding})</span>
+                </button>
+              )}
               <span className="text-[12.5px] font-semibold text-accent-soft">
                 {votedCount} of {voters.length} voted
               </span>
             </div>
           </div>
+          {nudgeSentTo !== null && (
+            <div
+              role="status"
+              className="mb-2.5 rounded-[10px] border border-accent/35 bg-accent/12 px-3 py-2 text-xs text-accent-soft"
+              style={{ animation: 'var(--animate-ppfade)' }}
+            >
+              <span aria-hidden="true">👋 </span>
+              Nudge sent to the {nudgeSentTo} {nudgeSentTo === 1 ? 'person' : 'people'} who
+              {nudgeSentTo === 1 ? ' hasn’t' : ' haven’t'} voted.
+            </div>
+          )}
           {/* role="list" restores what `list-style: none` takes away: WebKit drops list semantics
               — and with them the aria-label that tells this row apart from the played-card row. */}
           <ul
@@ -139,8 +208,22 @@ export function VotingStage(props: VotingStageProps) {
           )}
         </Panel>
 
+        {/* Announced, not just animated: a screen-reader user gets nothing from a border. */}
+        {showNudgePrompt && (
+          <div
+            role="status"
+            className="rounded-[10px] border border-accent/35 bg-accent/12 px-3.5 py-2.5 text-center text-[13px] text-accent-soft"
+            style={{ animation: 'var(--animate-ppfade)' }}
+          >
+            <span aria-hidden="true">👋 </span>
+            The host is waiting on your estimate.
+          </div>
+        )}
+
         {seat === 'voter' && (
-          <Panel>
+          // An arbitrary property, not a `border-accent` utility: panelClass already sets
+          // `border-border` and Tailwind emits it after, so an appended class silently loses.
+          <Panel className={showNudgePrompt ? '[border-color:var(--color-accent)]' : ''}>
             <Kicker className="mb-3 block text-center">Your vote</Kicker>
             <CardHand deck={state.deck} myVote={myVote} disabled={state.revealed} onVote={onVote} />
           </Panel>

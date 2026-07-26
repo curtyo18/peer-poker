@@ -55,6 +55,8 @@ function App() {
   const [resumableCode, setResumableCode] = useState<string | null>(null);
   const [hostError, setHostError] = useState<HostError>(null);
   const [brokerStatus, setBrokerStatus] = useState<BrokerStatus>('connecting');
+  // A counter rather than a boolean: a second nudge has to be distinguishable from the first.
+  const [nudgeSignal, setNudgeSignal] = useState(0);
   const [resuming, setResuming] = useState(false);
   const [displayRoomCode, setDisplayRoomCode] = useState<string | undefined>(undefined);
   const [attemptedJoin, setAttemptedJoin] = useState<
@@ -327,7 +329,11 @@ function App() {
     }, GUEST_CONNECT_TIMEOUT_MS);
 
     conn = await pendingConn;
-    const guest = makeGuestConn(conn, (s) => setTerminal(s === 'kicked' ? 'kicked' : 'ended'));
+    const guest = makeGuestConn(
+      conn,
+      (s) => setTerminal(s === 'kicked' ? 'kicked' : 'ended'),
+      () => setNudgeSignal((n) => n + 1),
+    );
     setGuest(guest);
     conn.on('open', () => guest.join(name, role));
   };
@@ -482,6 +488,7 @@ function App() {
           qrDataUrl={qrDataUrl}
           myPeerId={myPeerId}
           terminal={terminal}
+          nudgeSignal={nudgeSignal}
           onHostRoom={attemptedJoin ? handleHostAttemptedRoom : undefined}
           onLeave={handleLeave}
         />

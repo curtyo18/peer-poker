@@ -15,4 +15,29 @@ describe('makeHostConn', () => {
     expect(useSession.getState().state!.participants).toHaveLength(1);
     expect(sent.at(-1)).toMatchObject({ type: 'state' });
   });
+
+  // Broadcast rather than addressed: the host's view of who has voted can be a broadcast behind,
+  // and every client already knows whether it has voted.
+  it('sends a nudge to the whole room, naming no recipients', () => {
+    useSession.getState().reset();
+    useSession.getState().initHost('ROOM', FIBONACCI, false);
+    const a: unknown[] = [];
+    const b: unknown[] = [];
+    const host = makeHostConn();
+    host.onConnection({ peer: 'P1', on: vi.fn(), send: (m: unknown) => a.push(m) } as never);
+    host.onConnection({ peer: 'P2', on: vi.fn(), send: (m: unknown) => b.push(m) } as never);
+
+    host.nudge();
+    expect(a.at(-1)).toEqual({ type: 'nudge', from: 'ROOM' });
+    expect(b.at(-1)).toEqual({ type: 'nudge', from: 'ROOM' });
+  });
+
+  it('does not nudge from a room that has not started', () => {
+    useSession.getState().reset();
+    const sent: unknown[] = [];
+    const host = makeHostConn();
+    host.onConnection({ peer: 'P1', on: vi.fn(), send: (m: unknown) => sent.push(m) } as never);
+    host.nudge();
+    expect(sent).toHaveLength(0);
+  });
 });
