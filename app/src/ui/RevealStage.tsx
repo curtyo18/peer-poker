@@ -136,7 +136,6 @@ export function RevealStage(props: RevealStageProps) {
                       size="lg"
                       highlighted={stats.mode.includes(value)}
                       animateDelay={i * 0.08}
-                      showCorner
                     />
                     <div className="flex items-center gap-1.5">
                       <Avatar name={p.name} size="sm" />
