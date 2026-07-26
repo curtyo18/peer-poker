@@ -24,9 +24,7 @@ export function ResumeScreen({ roomLabel, pending, onResume, onDiscard }: Resume
         <h1 className={`${monoClass} mb-1.5 text-[30px] tracking-[.04em] text-accent-soft`}>
           {roomLabel.toUpperCase()}
         </h1>
-        <div className="mb-6 text-sm text-muted">
-          This device hosted this room before. Reopen it, or discard the saved session.
-        </div>
+        <div className="mb-6 text-sm text-muted">This device hosted this room before.</div>
 
         <Button variant="primary" className="mb-3 w-full" onClick={onResume} disabled={pending}>
           {pending ? 'Resuming…' : 'Resume session →'}

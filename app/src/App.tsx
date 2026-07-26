@@ -98,9 +98,13 @@ function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    // A URL room is handled by the effect above instead: showing the landing page's resume
+    // banner here first would race it, since that effect's entry decision needs an async hash
+    // and always moves mode off 'landing' once it resolves — this would just flash and vanish.
+    if (initialRoom) return;
     setResumable(loadSession());
     setResumableCode(loadRoomCode());
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A pending reconnect timer outlives the component otherwise.
   useEffect(() => () => lifecycleRef.current?.cancel(), []);
