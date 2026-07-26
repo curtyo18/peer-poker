@@ -1,5 +1,7 @@
 # PeerPoker
 
+![PeerPoker landing page](docs/screenshot.png)
+
 Serverless, peer-to-peer **planning poker**. A host runs a live estimation session;
 participants join from a shared link and vote with story-point cards. There is **no
 backend** — your votes, tickets, and results are exchanged **directly between the people in
