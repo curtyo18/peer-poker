@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { SessionState } from './domain/types';
 import { FIBONACCI } from './domain/decks';
+import { roomIdFromCode } from './net/roomId';
 
 type Handler = (arg?: unknown) => void;
 
@@ -137,6 +138,50 @@ describe('App — resuming a host session', () => {
     latestPeer().emit('error', { type: 'ssl-unavailable' });
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not reach the signalling service/i);
+  });
+});
+
+// Bug: opening a host's own room link (?room=) landed on the full landing page with the resume
+// banner buried in it, reading as blocked next to the join screen's focused "you're about to"
+// confirmation an anonymous link gets. `resume` needs the same dedicated, one-click screen.
+describe('App — following your own room link', () => {
+  const OWN_CODE = 'OWN-ROOM';
+
+  beforeEach(async () => {
+    const ownRoomId = await roomIdFromCode(OWN_CODE);
+    localStorage.setItem(
+      'poker.session',
+      JSON.stringify({ roomId: ownRoomId, state: { ...savedState, roomId: ownRoomId, hostPeerId: ownRoomId } }),
+    );
+    localStorage.setItem('poker.roomCode', OWN_CODE);
+    history.replaceState(null, '', `/?room=${OWN_CODE}`);
+  });
+
+  it('offers a focused resume confirmation instead of the full landing page', async () => {
+    await renderApp();
+
+    expect(await screen.findByText(/you.re about to resume/i)).toBeInTheDocument();
+    expect(screen.getByText(OWN_CODE)).toBeInTheDocument();
+    expect(screen.queryByText(/start a session/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/prior host session/i)).not.toBeInTheDocument();
+  });
+
+  it('still resumes the room from the dedicated screen', async () => {
+    await renderApp();
+    await screen.findByText(/you.re about to resume/i);
+    await userEvent.click(screen.getByRole('button', { name: /resume session/i }));
+
+    latestPeer().emit('open', await roomIdFromCode(OWN_CODE));
+    expect(await screen.findByText('Login')).toBeInTheDocument();
+  });
+
+  it('discarding backs out to the landing page', async () => {
+    await renderApp();
+    await screen.findByText(/you.re about to resume/i);
+    await userEvent.click(screen.getByRole('button', { name: /discard/i }));
+
+    expect(await screen.findByRole('heading', { name: /start a session/i })).toBeInTheDocument();
+    expect(localStorage.getItem('poker.session')).toBeNull();
   });
 });
 
