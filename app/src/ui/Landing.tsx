@@ -4,7 +4,6 @@ import { FIBONACCI } from '../domain/decks';
 import { loadDecks, loadLastDeckId, loadName, saveLastDeckId, saveName } from '../store/persistence';
 import { DeckManager } from './DeckManager';
 import { PlayingCard } from './PlayingCard';
-import { PrivacyExplainer } from './PrivacyExplainer';
 import { Button, DisplayHeading, Felt, Kicker, inputClass, monoClass } from './primitives';
 
 const fieldLabelClass = 'mb-2 block text-[12.5px] font-semibold text-fg-2';
@@ -273,10 +272,6 @@ export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
           Join
         </Button>
       </form>
-
-      <div className="mt-8 text-center">
-        <PrivacyExplainer />
-      </div>
 
       <DeckManager open={deckManagerOpen} onClose={closeDeckManager} />
     </main>

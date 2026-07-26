@@ -6,7 +6,7 @@ import { PlayingCard } from './PlayingCard';
 import { Badge, Button, DisplayHeading, Kicker, fieldClass, inputClass, labelClass } from './primitives';
 
 const dialogClass =
-  'w-[92vw] max-w-3xl rounded-2xl border border-border-gold bg-bg p-0 text-fg backdrop:bg-black/60';
+  'm-auto w-[92vw] max-w-3xl rounded-2xl border border-border-gold bg-bg p-0 text-fg backdrop:bg-black/60';
 
 interface DeckManagerProps {
   open: boolean;
