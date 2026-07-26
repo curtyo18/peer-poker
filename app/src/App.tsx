@@ -395,6 +395,7 @@ function App() {
     if (mode === 'host') getHost()?.end();
     abandonHostPeer();
     useSession.getState().reset();
+    clearSession();
     clearRoomCode();
     setHostError(null);
     setBrokerStatus('connecting');
