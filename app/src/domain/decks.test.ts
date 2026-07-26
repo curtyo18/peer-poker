@@ -20,6 +20,17 @@ describe('decks', () => {
     expect(seedDecks(BUILTIN_DECKS)).toEqual(BUILTIN_DECKS);
   });
 
+  // The regression this guards: a user who saved Fibonacci before a card was added to it (e.g.
+  // 0 and 1/2) had a stale snapshot in storage forever, since seeding only filled in *missing*
+  // built-ins and never touched one already present under that id.
+  it('resyncs a stale built-in to its current definition', () => {
+    const staleFibonacci = { ...FIBONACCI, values: ['1', '2', '3'] };
+    const seeded = seedDecks([staleFibonacci]);
+    expect(seeded).toContainEqual(FIBONACCI);
+    expect(seeded).not.toContainEqual(staleFibonacci);
+    expect(seeded.filter((d) => d.id === FIBONACCI.id)).toHaveLength(1);
+  });
+
   // The regression this guards: seeding used to check for Fibonacci alone and return early when
   // it found it, so every existing user — who by definition has Fibonacci saved — would never
   // be given a built-in introduced afterwards.
