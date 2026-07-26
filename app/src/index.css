@@ -1,37 +1,98 @@
 @import "tailwindcss";
 
-/* Dark is the default (no attribute / data-theme="dark") — a felt poker table at night. */
+/* Dark is the default (no attribute / data-theme="dark") — the handoff palette, verbatim. */
 :root, :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-bg: #08130e;
-  --color-surface: #12261d;
-  --color-surface-2: #0d1e16;
-  --color-fg: #f4ecd8;
-  --color-muted: #9db3a4;
-  --color-border: #274a3c;
-  --color-accent: #d9b45b;
-  --color-accent-fg: #20321e;
-  --color-card: #f6efdd;
+  --color-bg: #0a110d;
+  --color-surface: #12211b;
+  --color-surface-2: #0f1c16;
+  --color-input-bg: #0e1a15;
+  --color-border: rgba(150, 180, 150, 0.12);
+  --color-border-strong: rgba(150, 180, 150, 0.22);
+  --color-border-gold: rgba(216, 178, 95, 0.26);
+  --color-fg: #e9e5d9;
+  --color-fg-2: #c7d0c7;
+  --color-muted: #8b9a8f;
+  --color-muted-2: #7b8a7f;
+  --color-accent: #d8b25f;
+  --color-accent-btn: #d6ac4f;
+  --color-accent-soft: #e6c988;
+  --color-accent-fg: #1a2118;
+  --color-card: #f3ebd5;
+  --color-card-ink: #1c2b22;
+  --color-ready: #7fce9b;
+  /* The "voted" pill's border. A token rather than `border-ready/28` because the alpha itself
+     has to differ per theme — a light-mode green needs more of it to register on cream. The
+     pill's *fill* is just `bg-ready/10`, which color-mix already resolves per theme. */
+  --color-ready-border: rgba(127, 206, 155, 0.28);
+  --color-danger-border: rgba(200, 110, 90, 0.3);
+  --color-verdict-bg: #3a201b;
+  --color-verdict-border: rgba(200, 110, 90, 0.35);
+  --color-verdict-fg: #d19484;
+  --color-verdict-num: #f0d9c8;
+  --color-link: #8ec6e0;
+  /* 4.49:1 on --color-surface, and deliberately left there: this is only ever a histogram bar
+     fill (Histogram.tsx), never text, so it answers to the 3:1 non-text floor. Don't "fix" it. */
+  --color-outlier: #b8735f;
+  --color-danger-text: #d1857a;
+  /* Measured, not eyeballed: the handoff's #6f7d72 reads 3.85:1 on --color-surface. Placeholders
+     here carry the field's meaning ("Reference link (optional) — https://jira…"), so they are
+     content, not decoration, and take the same 4.5:1 floor as any other text. */
+  --color-placeholder: #7c897f;
+  /* Not in the handoff, but PlayingCard.tsx still draws a card border from it. */
   --color-card-edge: #d8cca6;
-  --color-card-ink: #20321e;
-  --color-danger-text: #ff9d8a;
 }
 
-/* Opt-in light theme — same table, daylight. */
+/* Light is derived, not designed. The rule: surfaces invert to warm cream; the card faces and
+   the felt do NOT change — they are the product's identity; the gold family darkens as a set
+   (`accent` #8a5f14, and any fill dark enough that --color-accent-fg still clears 4.5:1 on it);
+   every other foreground darkens until it *measures* ≥4.5:1 against bg, surface AND surface-2 —
+   check all three, bg is the tightest. Add a token here whenever you add one above.
+
+   Verify, don't assume: the first cut of this block asserted the ratios without measuring and
+   four tokens missed. `accent` (4.52) and `muted` (4.56) clear bg by under a tenth, so warming
+   --color-bg re-breaks them. --color-accent-soft means *more emphatic* gold, not lighter —
+   it darkens here while it lightens in dark mode. */
 :root[data-theme="light"] {
   color-scheme: light;
-  --color-bg: #e9e0cb;
-  --color-surface: #f7f1e2;
-  --color-surface-2: #efe7d2;
-  --color-fg: #23301f;
+  --color-bg: #ece6d6;
+  --color-surface: #f7f2e4;
+  --color-surface-2: #efe8d6;
+  --color-input-bg: #fdfaf1;
+  --color-border: rgba(60, 80, 60, 0.14);
+  --color-border-strong: rgba(60, 80, 60, 0.55);
+  --color-border-gold: rgba(138, 95, 20, 0.32);
+  --color-fg: #1d2a20;
+  --color-fg-2: #3c4a3e;
   --color-muted: #5c6b58;
-  --color-border: #d8ccae;
+  --color-muted-2: #586753;
   --color-accent: #8a5f14;
+  --color-accent-btn: #946a16;
+  --color-accent-soft: #6f4c0f;
   --color-accent-fg: #fff8e6;
   --color-card: #fffdf6;
+  --color-card-ink: #1c2b22;
+  /* Darker than it looks like it needs to be: the "voted" pill draws this glyph on top of its own
+     bg-ready/10 tint, which lifts the backdrop and cost the tick 4.43:1. Measured on the composite,
+     not on the surface underneath it. */
+  --color-ready: #186237;
+  --color-ready-border: rgba(24, 98, 55, 0.42);
+  /* The status dot's green is otherwise theme-independent — a legacy of the pre-redesign palette,
+     where every surface was dark. On cream it measured 1.50:1: a "live" indicator nobody can see.
+     It tracks `ready` here, since both mean the same thing to a reader. */
+  --color-success: #186237;
+  --color-success-ink: #f2f8f3;
+  --color-danger-border: rgba(163, 58, 44, 0.4);
+  --color-verdict-bg: #f6e2da;
+  --color-verdict-border: rgba(160, 80, 60, 0.4);
+  --color-verdict-fg: #8c3d2c;
+  --color-verdict-num: #6d2c1e;
+  --color-link: #1f5f80;
+  --color-outlier: #9a4a33;
+  --color-danger-text: #a33a2c;
+  --color-placeholder: #5d6b57;
+  /* Not in the handoff, but PlayingCard.tsx still draws a card border from it. */
   --color-card-edge: #e0d5b4;
-  --color-card-ink: #223018;
-  --color-danger-text: #b3261e;
 }
 
 /* The felt play surface reads the same "table" in both themes — it's the product's identity.
@@ -44,11 +105,16 @@
   --color-felt-panel: rgba(0, 0, 0, 0.24);
   --color-felt-fg: #f4ecd8;
   --color-felt-muted: #a6bbab;
+  /* The hero caption sits on the felt and reads as part of the table, not as UI chrome —
+     the handoff tints it green where --color-felt-muted stays neutral grey. */
+  --color-felt-caption: #5f9c78;
   --color-felt-border: #2c4c40;
   --color-felt-accent: #d9b45b;
   --color-felt-accent-fg: #20321e;
   /* Gold on a cream card face is illegible; this deeper gold carries the same accent read. */
   --color-card-accent: #8a5f14;
+  /* Avatar fills are fixed hexes chosen for identity, not theme, so their ink is fixed too. */
+  --color-avatar-fg: #fff;
   --color-success: #5fd39a;
   --color-success-ink: #0b1d17;
   --color-alert-bg: #5a2318;
@@ -60,19 +126,37 @@
   --color-bg: var(--color-bg);
   --color-surface: var(--color-surface);
   --color-surface-2: var(--color-surface-2);
-  --color-fg: var(--color-fg);
-  --color-muted: var(--color-muted);
+  --color-input-bg: var(--color-input-bg);
   --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-border-gold: var(--color-border-gold);
+  --color-fg: var(--color-fg);
+  --color-fg-2: var(--color-fg-2);
+  --color-muted: var(--color-muted);
+  --color-muted-2: var(--color-muted-2);
   --color-accent: var(--color-accent);
+  --color-accent-btn: var(--color-accent-btn);
+  --color-accent-soft: var(--color-accent-soft);
   --color-accent-fg: var(--color-accent-fg);
   --color-card: var(--color-card);
   --color-card-edge: var(--color-card-edge);
   --color-card-ink: var(--color-card-ink);
+  --color-ready: var(--color-ready);
+  --color-ready-border: var(--color-ready-border);
+  --color-danger-border: var(--color-danger-border);
+  --color-avatar-fg: var(--color-avatar-fg);
+  --color-verdict-bg: var(--color-verdict-bg);
+  --color-verdict-border: var(--color-verdict-border);
+  --color-verdict-fg: var(--color-verdict-fg);
+  --color-verdict-num: var(--color-verdict-num);
+  --color-link: var(--color-link);
+  --color-outlier: var(--color-outlier);
   --color-felt-1: var(--color-felt-1);
   --color-felt-2: var(--color-felt-2);
   --color-felt-3: var(--color-felt-3);
   --color-felt-fg: var(--color-felt-fg);
   --color-felt-muted: var(--color-felt-muted);
+  --color-felt-caption: var(--color-felt-caption);
   --color-felt-border: var(--color-felt-border);
   --color-felt-panel: var(--color-felt-panel);
   --color-card-accent: var(--color-card-accent);
@@ -83,17 +167,14 @@
   --color-alert-border: var(--color-alert-border);
   --color-danger-text: var(--color-danger-text);
 
-  /* No Google Fonts at runtime (hard constraint) — a serif/sans system stack stands in for
-     DM Serif Display / DM Sans, preserving the display-serif + humanist-sans pairing. */
-  --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+  /* Self-hosted via Fontsource (see src/main.tsx) — the handoff's typography without a runtime
+     request to fonts.googleapis.com, which ADR-0001's no-third-party-contact posture rules out. */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
 
-  --animate-flip: flip 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-pop: pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-fall: fall linear infinite;
-  --animate-pulse-ring: pulse-ring 2.4s infinite;
   --animate-spin-slow: spin 0.8s linear infinite;
+  --animate-ppfade: ppfade 0.3s ease;
 }
 
 @keyframes spin {
@@ -113,20 +194,8 @@
   }
 }
 
-@keyframes pop {
-  0% {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-  60% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
+/* `flip` and `fall` are applied as inline `animation:` shorthands (PlayingCard, RevealStage's
+   Confetti) rather than through an --animate-* token, so no Tailwind utility references them. */
 @keyframes fall {
   0% {
     transform: translateY(-40px) rotate(0deg);
@@ -138,15 +207,6 @@
   100% {
     transform: translateY(320px) rotate(320deg);
     opacity: 0;
-  }
-}
-
-@keyframes pulse-ring {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(217, 180, 91, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(217, 180, 91, 0);
   }
 }
 
@@ -169,3 +229,14 @@ body {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
+
+@keyframes ppfade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+::placeholder { color: var(--color-placeholder); }
+a { color: var(--color-accent); text-decoration: none; }
+a:hover { color: var(--color-accent-soft); }
+select { appearance: none; -webkit-appearance: none; }

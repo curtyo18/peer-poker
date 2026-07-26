@@ -24,7 +24,11 @@ export function applyIntent(state: SessionState, intent: Intent, fromPeerId: str
     case 'castVote': {
       const voter = state.participants.find((p) => p.peerId === fromPeerId);
       const item = activeItem(state);
-      if (!voter || voter.role !== 'voter' || !item || state.revealed) return state;
+      // The gate is the item being settled, not the cards being face-up. Seeing the table is
+      // exactly when someone changes their mind, and the reveal screen offers them the deck to
+      // do it with — so a late vote counts right up until the host accepts a value. After that
+      // the estimate is recorded and the round is over.
+      if (!voter || voter.role !== 'voter' || !item || item.status === 'accepted') return state;
       const items = state.items.map((i) =>
         i.id === item.id ? { ...i, votes: { ...i.votes, [fromPeerId]: intent.value } } : i);
       return { ...state, items };

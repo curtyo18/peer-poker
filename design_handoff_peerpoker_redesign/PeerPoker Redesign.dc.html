@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Public+Sans:wght@400;500;600;700&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0a110d; }
+  a { color: #d8b25f; text-decoration: none; }
+  a:hover { color: #e6c988; }
+  select { appearance: none; -webkit-appearance: none; }
+  ::placeholder { color: #6f7d72; }
+  @keyframes ppfade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#0a110d;color:#e9e5d9;font-family:'Public Sans',sans-serif;">
+
+  <!-- prototype chrome -->
+  <div style="position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 22px;background:rgba(9,15,12,0.86);backdrop-filter:blur(10px);border-bottom:1px solid rgba(150,180,150,0.12);">
+    <div style="display:flex;align-items:center;gap:9px;">
+      <div style="width:26px;height:26px;border-radius:7px;background:#d6ac4f;color:#1a2118;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;">P</div>
+      <span style="font-family:'Playfair Display',serif;font-size:17px;">Peer<span style="color:#d8b25f;">Poker</span></span>
+      <span style="margin-left:6px;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#7b8a7f;border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:3px 9px;">Redesign preview</span>
+    </div>
+    <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;">
+      <button onClick="{{ goLanding }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:7px 15px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;{{ navLanding }}">Landing</button>
+      <button onClick="{{ goJoin }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:7px 15px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;{{ navJoin }}">Invite / Join</button>
+      <button onClick="{{ goHost }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:7px 15px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;{{ navHost }}">Host console</button>
+      <button onClick="{{ goVoting }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:7px 15px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;{{ navVoting }}">Voting</button>
+      <button onClick="{{ goReveal }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:7px 15px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;{{ navReveal }}">Reveal</button>
+    </div>
+  </div>
+
+  <!-- ============================ LANDING ============================ -->
+  <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+  <div style="max-width:1080px;margin:0 auto;padding:40px 26px 80px;animation:ppfade .3s ease;">
+
+    <div style="display:grid;grid-template-columns:1.05fr 0.95fr;gap:44px;align-items:center;margin-bottom:52px;">
+      <div>
+        <div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#d8b25f;font-weight:700;margin-bottom:16px;">Anonymous planning poker</div>
+        <h1 style="font-family:'Playfair Display',serif;font-weight:600;font-size:52px;line-height:1.02;margin:0 0 20px;letter-spacing:-0.01em;">Estimate together.<br>Reveal all at once.</h1>
+        <p style="color:#a7b4a9;font-size:17px;line-height:1.55;max-width:430px;margin:0 0 22px;">No accounts, no anchoring, no loudest-voice-wins. Everyone plays a card face-down — the table turns over the moment the host says <em style="font-style:italic;color:#e9e5d9;">reveal</em>.</p>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;color:#8b9a8f;font-size:13.5px;">
+          <span>♠ Play a card to join</span>
+          <span>◎ Hidden until reveal</span>
+          <span>✦ No sign-up</span>
+        </div>
+      </div>
+      <div style="position:relative;background:radial-gradient(120% 120% at 50% 0%,#16302250,#0e1c15);border:1px solid rgba(150,180,150,0.14);border-radius:20px;height:290px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">
+        <div style="display:flex;align-items:flex-end;height:150px;">
+          <div style="width:60px;height:84px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(-16deg) translateY(10px);box-shadow:0 10px 24px rgba(0,0,0,.35);">3</div>
+          <div style="width:60px;height:84px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(-8deg) translateY(2px);box-shadow:0 10px 24px rgba(0,0,0,.35);margin-left:-10px;">5</div>
+          <div style="width:60px;height:84px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,.4);margin-left:-10px;z-index:2;">8</div>
+          <div style="width:60px;height:84px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(8deg) translateY(2px);box-shadow:0 10px 24px rgba(0,0,0,.35);margin-left:-10px;">13</div>
+          <div style="width:60px;height:84px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(16deg) translateY(10px);box-shadow:0 10px 24px rgba(0,0,0,.35);margin-left:-10px;">?</div>
+        </div>
+        <div style="margin-top:26px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#5f9c78;">The table awaits</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(216,178,95,0.06);border:1px solid rgba(216,178,95,0.2);border-radius:12px;padding:12px 15px;margin-bottom:22px;font-size:13px;color:#cbba8c;">
+      <span style="font-weight:700;letter-spacing:0.08em;color:#d8b25f;">WHAT CHANGED&nbsp;&nbsp;</span>Hosting is now the single primary action — most people who land here want to start a session. Joining is tucked into a slim strip, since guests almost always arrive through an invite link (see the Invite / Join screen).
+    </div>
+
+    <!-- HOST primary -->
+    <div style="background:linear-gradient(180deg,#15281f,#122019);border:1px solid rgba(216,178,95,0.28);border-radius:20px;padding:32px 34px;box-shadow:0 24px 60px rgba(0,0,0,.35);">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px;">
+        <div>
+          <div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#d8b25f;font-weight:700;">Host</div>
+          <h2 style="font-family:'Playfair Display',serif;font-weight:600;font-size:30px;margin:4px 0 0;">Start a session</h2>
+        </div>
+        <a href="#">Manage decks</a>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;">
+        <label style="display:block;">
+          <span style="display:block;font-size:12.5px;font-weight:600;color:#b9c4ba;margin-bottom:8px;">Deck</span>
+          <div style="position:relative;">
+            <select style="width:100%;background:#0e1a15;border:1px solid rgba(150,180,150,0.18);border-radius:10px;color:#e9e5d9;padding:13px 14px;font:inherit;cursor:pointer;">
+              <option>Fibonacci · 1 2 3 5 8 13 21</option>
+              <option>T-shirt · XS S M L XL</option>
+              <option>Powers of two · 1 2 4 8 16</option>
+            </select>
+            <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:#8b9a8f;">▾</span>
+          </div>
+        </label>
+        <label style="display:block;">
+          <span style="display:block;font-size:12.5px;font-weight:600;color:#b9c4ba;margin-bottom:8px;">Your name</span>
+          <input value="Curt" style="width:100%;background:#0e1a15;border:1px solid rgba(150,180,150,0.18);border-radius:10px;color:#e9e5d9;padding:13px 14px;font:inherit;">
+        </label>
+      </div>
+      <label style="display:block;margin-bottom:18px;">
+        <span style="display:block;font-size:12.5px;font-weight:600;color:#b9c4ba;margin-bottom:8px;">Room name <span style="color:#7b8a7f;font-weight:400;">— optional, makes a reusable link</span></span>
+        <input placeholder="e.g. FROG-42" style="width:100%;background:#0e1a15;border:1px solid rgba(150,180,150,0.18);border-radius:10px;color:#e9e5d9;padding:13px 14px;font:inherit;">
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;margin-bottom:22px;cursor:pointer;font-size:14.5px;color:#cdd6ce;">
+        <span style="width:20px;height:20px;border-radius:6px;background:#d6ac4f;color:#1a2118;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;">✓</span>
+        I'll vote too
+      </label>
+      <button onClick="{{ goHost }}" style="width:100%;background:#d6ac4f;color:#1a2118;border:none;border-radius:12px;padding:16px;font:inherit;font-size:16px;font-weight:700;cursor:pointer;">Start a session&nbsp;&nbsp;→</button>
+    </div>
+
+    <!-- JOIN secondary strip -->
+    <div style="margin-top:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:#0e1a15;border:1px solid rgba(150,180,150,0.12);border-radius:14px;padding:16px 20px;">
+      <div style="flex:1;min-width:230px;">
+        <div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#8b9a8f;font-weight:700;margin-bottom:3px;">Joining a session?</div>
+        <div style="font-size:13.5px;color:#9fac9f;">You probably have an invite link — just open it. Or enter a code:</div>
+      </div>
+      <input placeholder="FROG-42" style="width:150px;background:#0a130f;border:1px solid rgba(150,180,150,0.18);border-radius:10px;color:#e9e5d9;padding:11px 13px;font:inherit;font-family:'Space Mono',monospace;">
+      <button onClick="{{ goJoin }}" style="background:transparent;color:#e9e5d9;border:1px solid rgba(150,180,150,0.28);border-radius:10px;padding:11px 20px;font:inherit;font-weight:600;cursor:pointer;">Join</button>
+    </div>
+
+  </div>
+  </sc-if>
+
+  <!-- ============================ INVITE / JOIN ============================ -->
+  <sc-if value="{{ isJoin }}" hint-placeholder-val="{{ true }}">
+  <div style="max-width:940px;margin:0 auto;padding:24px 26px 80px;animation:ppfade .3s ease;">
+    <div style="display:flex;justify-content:center;gap:8px;margin:14px 0 26px;">
+      <span style="font-size:12px;color:#8b9a8f;align-self:center;margin-right:6px;">Preview state:</span>
+      <button onClick="{{ setFirst }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:6px 14px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;{{ segFirst }}">First-time guest</button>
+      <button onClick="{{ setReturning }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:6px 14px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;{{ segReturning }}">Returning (name remembered)</button>
+    </div>
+
+    <div style="max-width:460px;margin:0 auto;">
+      <div style="background:rgba(216,178,95,0.06);border:1px solid rgba(216,178,95,0.2);border-radius:12px;padding:12px 15px;margin-bottom:20px;font-size:13px;color:#cbba8c;">
+        <span style="font-weight:700;letter-spacing:0.08em;color:#d8b25f;">WHAT CHANGED&nbsp;&nbsp;</span>The invite link opens a dedicated, unmissable "you're joining X" moment instead of the full landing page. Returning guests still get the friendly confirm-and-join (no silent auto-join); first-timers just add a name.
+      </div>
+
+      <div style="background:linear-gradient(180deg,#15281f,#101d16);border:1px solid rgba(216,178,95,0.24);border-radius:22px;padding:34px 30px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.4);">
+        <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#8b9a8f;font-weight:700;margin-bottom:14px;">You're about to join</div>
+        <div style="font-family:'Space Mono',monospace;font-size:30px;letter-spacing:0.04em;color:#e6c988;margin-bottom:6px;">6K1M0W1S2T0E</div>
+        <div style="color:#9fac9f;font-size:14px;margin-bottom:26px;">Estimate together, reveal all at once.</div>
+
+        <!-- returning -->
+        <sc-if value="{{ joinKnown }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;background:#0e1a15;border:1px solid rgba(150,180,150,0.16);border-radius:14px;padding:14px 18px;margin-bottom:18px;">
+          <div style="width:38px;height:38px;border-radius:50%;background:#2f6b8a;color:#eaf3f7;display:flex;align-items:center;justify-content:center;font-weight:700;">C</div>
+          <div style="text-align:left;">
+            <div style="font-size:12px;color:#8b9a8f;">Joining as</div>
+            <div style="font-size:17px;font-weight:700;">Curt</div>
+          </div>
+        </div>
+        <button style="width:100%;background:#d6ac4f;color:#1a2118;border:none;border-radius:12px;padding:15px;font:inherit;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:12px;">Join room&nbsp;&nbsp;→</button>
+        <div style="display:flex;justify-content:center;gap:18px;font-size:13.5px;">
+          <a href="#" onClick="{{ setFirst }}">Not you? Use a different name</a>
+          <span style="color:#5f6d63;">·</span>
+          <a href="#">Join as observer</a>
+        </div>
+        </sc-if>
+
+        <!-- first-time -->
+        <sc-if value="{{ joinFirst }}" hint-placeholder-val="{{ true }}">
+        <label style="display:block;text-align:left;margin-bottom:16px;">
+          <span style="display:block;font-size:12.5px;font-weight:600;color:#b9c4ba;margin-bottom:8px;">What should we call you?</span>
+          <input placeholder="Your name" autofocus style="width:100%;background:#0e1a15;border:1px solid rgba(216,178,95,0.3);border-radius:10px;color:#e9e5d9;padding:14px;font:inherit;font-size:15px;">
+          <span style="display:block;font-size:12px;color:#7b8a7f;margin-top:8px;">We'll remember it on this device next time.</span>
+        </label>
+        <div style="display:flex;gap:10px;margin-bottom:6px;">
+          <button style="flex:1;background:#d6ac4f;color:#1a2118;border:none;border-radius:12px;padding:15px;font:inherit;font-size:16px;font-weight:700;cursor:pointer;">Join room&nbsp;&nbsp;→</button>
+          <button style="background:transparent;color:#cdd6ce;border:1px solid rgba(150,180,150,0.22);border-radius:12px;padding:15px 18px;font:inherit;font-weight:600;cursor:pointer;">Observe</button>
+        </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ============================ HOST CONSOLE ============================ -->
+  <sc-if value="{{ isHost }}" hint-placeholder-val="{{ true }}">
+  <div style="max-width:1120px;margin:0 auto;padding:26px 26px 80px;animation:ppfade .3s ease;">
+
+    <!-- header strip -->
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+      <div>
+        <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8b9a8f;font-weight:700;">Host console</div>
+        <div style="font-family:'Playfair Display',serif;font-size:24px;">Room <span style="font-family:'Space Mono',monospace;font-size:19px;color:#e6c988;">6K1M0W1S2T0E</span> <span style="font-size:11px;color:#5f9c78;vertical-align:middle;margin-left:6px;">● live</span></div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;background:#0e1a15;border:1px solid rgba(150,180,150,0.14);border-radius:12px;padding:8px 8px 8px 14px;">
+        <span style="font-family:'Space Mono',monospace;font-size:13px;color:#cdd6ce;">…/?room=6k1m0w1s2t0e</span>
+        <button style="background:#d6ac4f;color:#1a2118;border:none;border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;">Copy link</button>
+        <button onClick="{{ toggleQr }}" style="background:transparent;color:#cdd6ce;border:1px solid rgba(150,180,150,0.22);border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;">QR</button>
+      </div>
+    </div>
+
+    <div style="background:rgba(216,178,95,0.06);border:1px solid rgba(216,178,95,0.2);border-radius:12px;padding:12px 15px;margin-bottom:20px;font-size:13px;color:#cbba8c;">
+      <span style="font-weight:700;letter-spacing:0.08em;color:#d8b25f;">WHAT CHANGED&nbsp;&nbsp;</span>The always-on empty voting fan is gone — while idle you get a clear guided path. Invite + QR collapse into a single compact bar (QR is behind a toggle). The agenda becomes the primary panel and drives everything.
+    </div>
+
+    <!-- QR popover -->
+    <sc-if value="{{ qrOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <div style="background:#0e1a15;border:1px solid rgba(150,180,150,0.16);border-radius:14px;padding:16px;text-align:center;">
+        <div style="width:150px;height:150px;background:#f3ebd5;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#1c2b22;font-family:'Space Mono',monospace;font-size:12px;">▚▞ QR ▞▚</div>
+        <div style="font-size:12px;color:#8b9a8f;margin-top:8px;">Scan to join on your phone</div>
+      </div>
+    </div>
+    </sc-if>
+
+    <div style="display:grid;grid-template-columns:1fr 1.35fr;gap:20px;align-items:start;">
+
+      <!-- left: guided + table -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="background:#12211b;border:1px solid rgba(150,180,150,0.12);border-radius:16px;padding:22px;">
+          <div style="font-family:'Playfair Display',serif;font-size:19px;margin-bottom:4px;">Your table is live</div>
+          <div style="font-size:13.5px;color:#9fac9f;margin-bottom:18px;">Three quick steps to your first round.</div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:24px;height:24px;border-radius:50%;background:#d6ac4f;color:#1a2118;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">1</div>
+              <div><div style="font-weight:600;font-size:14.5px;">Share the invite</div><div style="font-size:12.5px;color:#8b9a8f;">Copy the link above or show the QR.</div></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:24px;height:24px;border-radius:50%;background:#1e3327;color:#e6c988;border:1px solid rgba(216,178,95,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">2</div>
+              <div><div style="font-weight:600;font-size:14.5px;">Add what you're estimating</div><div style="font-size:12.5px;color:#8b9a8f;">Paste tickets or type items — right here.</div></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:24px;height:24px;border-radius:50%;background:#1e3327;color:#8b9a8f;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">3</div>
+              <div><div style="font-weight:600;font-size:14.5px;color:#cdd6ce;">Start a round</div><div style="font-size:12.5px;color:#8b9a8f;">Hit "Vote" on an item when everyone's in.</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#12211b;border:1px solid rgba(150,180,150,0.12);border-radius:16px;padding:18px 20px;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
+            <div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#8b9a8f;font-weight:700;">Table</div>
+            <div style="font-size:12px;color:#8b9a8f;">1 seated</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:30px;height:30px;border-radius:50%;background:#2f6b8a;color:#eaf3f7;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">C</div>
+            <span style="font-weight:600;">Curt</span>
+            <span style="font-size:11px;color:#5f9c78;">● host</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- right: AGENDA primary -->
+      <div style="background:#12211b;border:1px solid rgba(216,178,95,0.22);border-radius:16px;padding:22px 24px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;">
+          <div>
+            <div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#d8b25f;font-weight:700;">Agenda</div>
+            <div style="font-family:'Playfair Display',serif;font-size:20px;">What are we estimating?</div>
+          </div>
+          <div style="font-size:12px;color:#8b9a8f;">0 / 2 done</div>
+        </div>
+
+        <!-- add row with link support -->
+        <div style="background:#0e1a15;border:1px solid rgba(150,180,150,0.18);border-radius:12px;padding:8px 8px 8px 14px;display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <input placeholder="Paste a Jira / Confluence link, or type an item…" style="flex:1;background:transparent;border:none;color:#e9e5d9;padding:8px 0;font:inherit;font-size:14.5px;outline:none;">
+          <button title="Attach reference link" style="background:transparent;color:#8b9a8f;border:1px solid rgba(150,180,150,0.2);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;cursor:pointer;">🔗 Link</button>
+          <button style="background:#d6ac4f;color:#1a2118;border:none;border-radius:8px;padding:9px 16px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;">Add</button>
+        </div>
+        <div style="font-size:12px;color:#7b8a7f;margin-bottom:18px;">Pre-load your backlog now, or add items live during the session. Pasted links auto-title from the ticket.</div>
+
+        <!-- item 1 -->
+        <div style="background:#0f1c16;border:1px solid rgba(150,180,150,0.12);border-radius:12px;padding:14px 16px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="color:#4f5d52;cursor:grab;font-size:15px;">⋮⋮</span>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:15px;">Checkout redesign spike</div>
+              <a href="#" style="display:inline-flex;align-items:center;gap:6px;margin-top:5px;font-size:12px;font-family:'Space Mono',monospace;background:rgba(47,107,138,0.18);color:#8ec6e0;border:1px solid rgba(47,107,138,0.4);border-radius:6px;padding:2px 8px;">🔗 PROJ-241 · Jira</a>
+            </div>
+            <button style="background:#d6ac4f;color:#1a2118;border:none;border-radius:8px;padding:9px 16px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;">Vote →</button>
+            <div style="position:relative;">
+              <button onClick="{{ toggleMenu1 }}" style="background:transparent;color:#9fac9f;border:1px solid rgba(150,180,150,0.18);border-radius:8px;padding:8px 11px;font:inherit;cursor:pointer;">⋯</button>
+              <sc-if value="{{ menu1 }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:0;top:42px;z-index:20;background:#16261e;border:1px solid rgba(150,180,150,0.2);border-radius:10px;padding:6px;min-width:150px;box-shadow:0 16px 40px rgba(0,0,0,.5);">
+                <div style="padding:9px 12px;font-size:13.5px;color:#cdd6ce;cursor:pointer;border-radius:7px;">Edit item</div>
+                <div style="padding:9px 12px;font-size:13.5px;color:#cdd6ce;cursor:pointer;border-radius:7px;">Move down</div>
+                <div style="padding:9px 12px;font-size:13.5px;color:#d1857a;cursor:pointer;border-radius:7px;">Remove</div>
+              </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+
+        <!-- item 2 -->
+        <div style="background:#0f1c16;border:1px solid rgba(150,180,150,0.12);border-radius:12px;padding:14px 16px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="color:#4f5d52;cursor:grab;font-size:15px;">⋮⋮</span>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:15px;">Rate-limit the search API</div>
+              <a href="#" style="display:inline-flex;align-items:center;gap:6px;margin-top:5px;font-size:12px;font-family:'Space Mono',monospace;background:rgba(90,120,90,0.14);color:#a9c6a2;border:1px solid rgba(120,150,120,0.3);border-radius:6px;padding:2px 8px;">🔗 Search RFC · Confluence</a>
+            </div>
+            <button style="background:#d6ac4f;color:#1a2118;border:none;border-radius:8px;padding:9px 16px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;">Vote →</button>
+            <div style="position:relative;">
+              <button onClick="{{ toggleMenu2 }}" style="background:transparent;color:#9fac9f;border:1px solid rgba(150,180,150,0.18);border-radius:8px;padding:8px 11px;font:inherit;cursor:pointer;">⋯</button>
+              <sc-if value="{{ menu2 }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:0;top:42px;z-index:20;background:#16261e;border:1px solid rgba(150,180,150,0.2);border-radius:10px;padding:6px;min-width:150px;box-shadow:0 16px 40px rgba(0,0,0,.5);">
+                <div style="padding:9px 12px;font-size:13.5px;color:#cdd6ce;cursor:pointer;border-radius:7px;">Edit item</div>
+                <div style="padding:9px 12px;font-size:13.5px;color:#cdd6ce;cursor:pointer;border-radius:7px;">Move up</div>
+                <div style="padding:9px 12px;font-size:13.5px;color:#d1857a;cursor:pointer;border-radius:7px;">Remove</div>
+              </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ============================ VOTING ============================ -->
+  <sc-if value="{{ isVoting }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:760px;margin:0 auto;padding:24px 26px 80px;animation:ppfade .3s ease;">
+    <div style="display:flex;justify-content:center;gap:8px;margin:6px 0 22px;">
+      <span style="font-size:12px;color:#8b9a8f;align-self:center;margin-right:6px;">View as:</span>
+      <button onClick="{{ setGuest }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:6px 14px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;{{ segGuest }}">As guest</button>
+      <button onClick="{{ setHost }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:6px 14px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;{{ segHost }}">As host</button>
+    </div>
+
+    <div style="background:rgba(216,178,95,0.06);border:1px solid rgba(216,178,95,0.2);border-radius:12px;padding:12px 15px;margin-bottom:22px;font-size:13px;color:#cbba8c;">
+      <span style="font-weight:700;letter-spacing:0.08em;color:#d8b25f;">RESTORED&nbsp;&nbsp;</span>Back to the cleaner original voting view — a compact played-cards row plus a THINKING / READY roster, so the table's status reads at a glance. The one thing carried over from the redesign: the reference-link chip on the item.
+    </div>
+
+    <!-- table folded into top: who's voted -->
+    <div style="background:#12211b;border:1px solid rgba(150,180,150,0.12);border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:11px;">
+        <span style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#8b9a8f;font-weight:700;">Table · 8 seated</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <sc-if value="{{ revealGuest }}" hint-placeholder-val="{{ false }}"><button style="background:transparent;color:#cdd6ce;border:1px solid rgba(150,180,150,0.22);border-radius:999px;padding:5px 12px;font:inherit;font-size:12px;cursor:pointer;">◉ Observe instead</button></sc-if>
+          <span style="font-size:12.5px;color:#e6c988;font-weight:600;">5 of 8 voted</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:7px;background:rgba(127,206,155,0.1);border:1px solid rgba(127,206,155,0.28);border-radius:999px;padding:3px 11px 3px 3px;"><div style="width:22px;height:22px;border-radius:50%;background:#2f6b8a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">C</div><span style="font-size:13px;color:#dfe6df;">Curt</span><span style="color:#7fce9b;font-size:12px;">✓</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:rgba(127,206,155,0.1);border:1px solid rgba(127,206,155,0.28);border-radius:999px;padding:3px 11px 3px 3px;"><div style="width:22px;height:22px;border-radius:50%;background:#7a5a3a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">a</div><span style="font-size:13px;color:#dfe6df;">aazz</span><span style="color:#7fce9b;font-size:12px;">✓</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:#0f1c16;border:1px solid rgba(150,180,150,0.16);border-radius:999px;padding:3px 11px 3px 3px;"><div style="width:22px;height:22px;border-radius:50%;background:#3a7a6a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;opacity:0.8;">P</div><span style="font-size:13px;color:#8b9a8f;">Priya</span><span style="color:#8b9a8f;font-size:13px;line-height:1;">···</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:rgba(127,206,155,0.1);border:1px solid rgba(127,206,155,0.28);border-radius:999px;padding:3px 11px 3px 3px;"><div style="width:22px;height:22px;border-radius:50%;background:#6a4a7a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">S</div><span style="font-size:13px;color:#dfe6df;">Sam</span><span style="color:#7fce9b;font-size:12px;">✓</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:#0f1c16;border:1px solid rgba(150,180,150,0.16);border-radius:999px;padding:3px 11px 3px 3px;"><div style="width:22px;height:22px;border-radius:50%;background:#8a5a3a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;opacity:0.8;">D</div><span style="font-size:13px;color:#8b9a8f;">Devon</span><span style="color:#8b9a8f;font-size:13px;line-height:1;">···</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:rgba(127,206,155,0.1);border:1px solid rgba(127,206,155,0.28);border-radius:999px;padding:3px 11px 3px 3px;"><div style="width:22px;height:22px;border-radius:50%;background:#5a6a3a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">M</div><span style="font-size:13px;color:#dfe6df;">Mira</span><span style="color:#7fce9b;font-size:12px;">✓</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:#0f1c16;border:1px solid rgba(150,180,150,0.16);border-radius:999px;padding:3px 11px 3px 3px;"><div style="width:22px;height:22px;border-radius:50%;background:#4a5a6a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;opacity:0.8;">L</div><span style="font-size:13px;color:#8b9a8f;">Lee</span><span style="color:#8b9a8f;font-size:13px;line-height:1;">···</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:rgba(127,206,155,0.1);border:1px solid rgba(127,206,155,0.28);border-radius:999px;padding:3px 11px 3px 3px;"><div style="width:22px;height:22px;border-radius:50%;background:#7a3a5a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">Y</div><span style="font-size:13px;color:#dfe6df;">Yon</span><span style="color:#7fce9b;font-size:12px;">✓</span></div>
+      </div>
+    </div>
+
+    <!-- now estimating -->
+    <div style="background:#12211b;border:1px solid rgba(150,180,150,0.12);border-radius:16px;padding:20px 22px;margin-bottom:14px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px;">
+        <div>
+          <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#d8b25f;font-weight:700;">Now estimating</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+            <span style="font-family:'Playfair Display',serif;font-size:22px;">Checkout redesign spike</span>
+            <a href="#" style="font-size:12px;font-family:'Space Mono',monospace;background:rgba(47,107,138,0.18);color:#8ec6e0;border:1px solid rgba(47,107,138,0.4);border-radius:6px;padding:2px 8px;">🔗 PROJ-241</a>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:'Playfair Display',serif;font-size:18px;color:#e6c988;">5<span style="color:#8b9a8f;font-size:13px;"> / 8</span></div>
+          <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#8b9a8f;">cards in</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:14px 12px;">
+        <div style="text-align:center;"><div style="width:52px;height:74px;border-radius:7px;background:repeating-linear-gradient(45deg,#d6ac4f,#d6ac4f 6px,#c99f42 6px,#c99f42 12px);"></div><div style="font-size:12px;color:#c7d0c7;margin-top:7px;">Curt</div></div>
+        <div style="text-align:center;"><div style="width:52px;height:74px;border-radius:7px;background:repeating-linear-gradient(45deg,#d6ac4f,#d6ac4f 6px,#c99f42 6px,#c99f42 12px);"></div><div style="font-size:12px;color:#c7d0c7;margin-top:7px;">aazz</div></div>
+        <div style="text-align:center;"><div style="width:52px;height:74px;border-radius:7px;border:2px dashed rgba(150,180,150,0.3);display:flex;align-items:center;justify-content:center;color:#5f6d63;font-size:20px;">…</div><div style="font-size:12px;color:#8b9a8f;margin-top:7px;">Priya</div></div>
+        <div style="text-align:center;"><div style="width:52px;height:74px;border-radius:7px;background:repeating-linear-gradient(45deg,#d6ac4f,#d6ac4f 6px,#c99f42 6px,#c99f42 12px);"></div><div style="font-size:12px;color:#c7d0c7;margin-top:7px;">Sam</div></div>
+        <div style="text-align:center;"><div style="width:52px;height:74px;border-radius:7px;border:2px dashed rgba(150,180,150,0.3);display:flex;align-items:center;justify-content:center;color:#5f6d63;font-size:20px;">…</div><div style="font-size:12px;color:#8b9a8f;margin-top:7px;">Devon</div></div>
+        <div style="text-align:center;"><div style="width:52px;height:74px;border-radius:7px;background:repeating-linear-gradient(45deg,#d6ac4f,#d6ac4f 6px,#c99f42 6px,#c99f42 12px);"></div><div style="font-size:12px;color:#c7d0c7;margin-top:7px;">Mira</div></div>
+        <div style="text-align:center;"><div style="width:52px;height:74px;border-radius:7px;border:2px dashed rgba(150,180,150,0.3);display:flex;align-items:center;justify-content:center;color:#5f6d63;font-size:20px;">…</div><div style="font-size:12px;color:#8b9a8f;margin-top:7px;">Lee</div></div>
+        <div style="text-align:center;"><div style="width:52px;height:74px;border-radius:7px;background:repeating-linear-gradient(45deg,#d6ac4f,#d6ac4f 6px,#c99f42 6px,#c99f42 12px);"></div><div style="font-size:12px;color:#c7d0c7;margin-top:7px;">Yon</div></div>
+      </div>
+      <div style="text-align:center;font-size:12.5px;color:#8b9a8f;margin-top:18px;">You played 5 · tap another card to change it — the table flips when the host reveals.</div>
+    </div>
+
+    <!-- your picker -->
+    <div style="background:#12211b;border:1px solid rgba(150,180,150,0.12);border-radius:16px;padding:18px 12px 22px;margin-bottom:14px;">
+      <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#d8b25f;font-weight:700;text-align:center;margin-bottom:16px;">Your vote</div>
+      <div style="display:flex;justify-content:center;align-items:flex-end;height:104px;">
+        <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(-30deg) translateY(16px);margin:0 -6px;cursor:pointer;">1</div>
+        <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(-20deg) translateY(7px);margin:0 -6px;cursor:pointer;">2</div>
+        <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(-10deg) translateY(1px);margin:0 -6px;cursor:pointer;">3</div>
+        <div style="width:58px;height:82px;background:#fff;color:#1c2b22;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:25px;transform:translateY(-16px);margin:0 -2px;box-shadow:0 14px 30px rgba(0,0,0,.45);border:2px solid #d6ac4f;z-index:3;cursor:pointer;">5<span style="font-size:8px;letter-spacing:0.1em;color:#8a7a4a;font-family:'Public Sans';">YOUR PICK</span></div>
+        <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(10deg) translateY(1px);margin:0 -6px;cursor:pointer;">8</div>
+        <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(20deg) translateY(7px);margin:0 -6px;cursor:pointer;">13</div>
+        <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(30deg) translateY(16px);margin:0 -6px;cursor:pointer;">?</div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:#8b9a8f;margin-top:10px;">You played 5 · tap another card to change it — the table flips when the host reveals.</div>
+    </div>
+
+    <!-- host action bar -->
+    <sc-if value="{{ revealHost }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#0f1c16;border:1px solid rgba(150,180,150,0.12);border-radius:14px;padding:14px 18px;margin-top:14px;">
+      <span style="font-size:13px;color:#8b9a8f;">3 players still deciding.</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        <button style="background:transparent;color:#cdd6ce;border:1px solid rgba(150,180,150,0.22);border-radius:10px;padding:12px 16px;font:inherit;font-weight:600;cursor:pointer;">Skip item</button>
+        <button onClick="{{ goReveal }}" style="background:#d6ac4f;color:#1a2118;border:none;border-radius:10px;padding:12px 22px;font:inherit;font-weight:700;cursor:pointer;">Reveal all →</button>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- guest action bar -->
+    <sc-if value="{{ revealGuest }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:10px;margin-top:14px;font-size:13px;color:#8b9a8f;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#7fce9b;display:inline-block;"></span>
+      Your card's in. You can change it any time until the host reveals.
+    </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <!-- ============================ REVEAL ============================ -->
+  <sc-if value="{{ isReveal }}" hint-placeholder-val="{{ true }}">
+  <div style="max-width:1120px;margin:0 auto;padding:24px 26px 80px;animation:ppfade .3s ease;">
+    <div style="display:flex;justify-content:center;gap:8px;margin:6px 0 22px;">
+      <span style="font-size:12px;color:#8b9a8f;align-self:center;margin-right:6px;">View as:</span>
+      <button onClick="{{ setGuest }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:6px 14px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;{{ segGuest }}">As guest</button>
+      <button onClick="{{ setHost }}" style="border:1px solid rgba(150,180,150,0.18);border-radius:999px;padding:6px 14px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;{{ segHost }}">As host</button>
+    </div>
+
+    <div style="background:rgba(216,178,95,0.06);border:1px solid rgba(216,178,95,0.2);border-radius:12px;padding:12px 15px;margin-bottom:22px;font-size:13px;color:#cbba8c;max-width:760px;margin-left:auto;margin-right:auto;">
+      <span style="font-weight:700;letter-spacing:0.08em;color:#d8b25f;">RESTORED&nbsp;&nbsp;</span>Back to the cleaner reveal — revealed cards, distribution, the amber verdict call, and your picker in one calm column. The reference-link chip is carried over from the redesign.
+    </div>
+
+    <div style="max-width:760px;margin:0 auto;">
+      <!-- status bar -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:#12211b;border:1px solid rgba(150,180,150,0.12);border-radius:14px;padding:10px 14px;margin-bottom:14px;">
+        <div style="display:flex;">
+          <div style="width:26px;height:26px;border-radius:50%;background:#2f6b8a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #12211b;">C</div>
+          <div style="width:26px;height:26px;border-radius:50%;background:#7a5a3a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #12211b;margin-left:-8px;">a</div>
+          <div style="width:26px;height:26px;border-radius:50%;background:#3a7a6a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #12211b;margin-left:-8px;">P</div>
+          <div style="width:26px;height:26px;border-radius:50%;background:#6a4a7a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #12211b;margin-left:-8px;">S</div>
+          <div style="width:26px;height:26px;border-radius:50%;background:#5a6a3a;color:#cdd6ce;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid #12211b;margin-left:-8px;">+4</div>
+        </div>
+        <span style="font-size:12.5px;color:#5f9c78;">● 8 of 8 in · revealed</span>
+      </div>
+
+      <!-- reveal card -->
+      <div style="background:#12211b;border:1px solid rgba(150,180,150,0.12);border-radius:16px;padding:20px 22px;margin-bottom:14px;">
+        <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#d8b25f;font-weight:700;">The reveal</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;margin-bottom:20px;">
+          <span style="font-family:'Playfair Display',serif;font-size:22px;">Checkout redesign spike</span>
+          <a href="#" style="font-size:12px;font-family:'Space Mono',monospace;background:rgba(47,107,138,0.18);color:#8ec6e0;border:1px solid rgba(47,107,138,0.4);border-radius:6px;padding:2px 8px;">🔗 PROJ-241</a>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px 12px;">
+          <div style="text-align:center;"><div style="width:58px;height:80px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:26px;">3</div><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;"><div style="width:18px;height:18px;border-radius:50%;background:#2f6b8a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">C</div><span style="font-size:12px;color:#8b9a8f;">Curt</span></div></div>
+          <div style="text-align:center;"><div style="width:58px;height:80px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:26px;">5</div><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;"><div style="width:18px;height:18px;border-radius:50%;background:#7a5a3a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">a</div><span style="font-size:12px;color:#8b9a8f;">aazz</span></div></div>
+          <div style="text-align:center;"><div style="width:58px;height:80px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:26px;">5</div><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;"><div style="width:18px;height:18px;border-radius:50%;background:#3a7a6a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">P</div><span style="font-size:12px;color:#8b9a8f;">Priya</span></div></div>
+          <div style="text-align:center;"><div style="width:58px;height:80px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:26px;">8</div><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;"><div style="width:18px;height:18px;border-radius:50%;background:#6a4a7a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">S</div><span style="font-size:12px;color:#8b9a8f;">Sam</span></div></div>
+          <div style="text-align:center;"><div style="width:58px;height:80px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:26px;">3</div><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;"><div style="width:18px;height:18px;border-radius:50%;background:#8a5a3a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">D</div><span style="font-size:12px;color:#8b9a8f;">Devon</span></div></div>
+          <div style="text-align:center;"><div style="width:58px;height:80px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:26px;">5</div><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;"><div style="width:18px;height:18px;border-radius:50%;background:#5a6a3a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">M</div><span style="font-size:12px;color:#8b9a8f;">Mira</span></div></div>
+          <div style="text-align:center;"><div style="width:58px;height:80px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:26px;">13</div><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;"><div style="width:18px;height:18px;border-radius:50%;background:#4a5a6a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">L</div><span style="font-size:12px;color:#8b9a8f;">Lee</span></div></div>
+          <div style="text-align:center;"><div style="width:58px;height:80px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:26px;">5</div><div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;"><div style="width:18px;height:18px;border-radius:50%;background:#7a3a5a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">Y</div><span style="font-size:12px;color:#8b9a8f;">Yon</span></div></div>
+        </div>
+
+        <div style="margin-top:22px;">
+          <div style="display:flex;align-items:flex-end;gap:8px;height:56px;margin-bottom:6px;">
+            <div style="flex:1;height:2px;background:rgba(150,180,150,0.2);"></div>
+            <div style="flex:1;height:2px;background:rgba(150,180,150,0.2);"></div>
+            <div style="flex:1;height:50%;background:#c7b06a;border-radius:4px 4px 0 0;"></div>
+            <div style="flex:1;height:100%;background:#d6ac4f;border-radius:4px 4px 0 0;"></div>
+            <div style="flex:1;height:25%;background:#c7b06a;border-radius:4px 4px 0 0;"></div>
+            <div style="flex:1;height:25%;background:#b8735f;border-radius:4px 4px 0 0;"></div>
+            <div style="flex:1;height:2px;background:rgba(150,180,150,0.2);"></div>
+            <div style="flex:1;height:2px;background:rgba(150,180,150,0.2);"></div>
+            <div style="flex:1;height:2px;background:rgba(150,180,150,0.2);"></div>
+          </div>
+          <div style="display:flex;gap:8px;font-size:11px;color:#7b8a7f;">
+            <div style="flex:1;text-align:center;">1</div><div style="flex:1;text-align:center;">2</div><div style="flex:1;text-align:center;">3</div><div style="flex:1;text-align:center;color:#d8b25f;">5</div><div style="flex:1;text-align:center;">8</div><div style="flex:1;text-align:center;">13</div><div style="flex:1;text-align:center;">21</div><div style="flex:1;text-align:center;">?</div><div style="flex:1;text-align:center;">☕</div>
+          </div>
+        </div>
+
+        <div style="background:#3a201b;border:1px solid rgba(200,110,90,0.35);border-radius:14px;padding:16px 20px;text-align:center;margin-top:18px;">
+          <div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#d19484;font-weight:700;">Split table — discuss</div>
+          <div style="font-family:'Playfair Display',serif;font-size:40px;color:#f0d9c8;line-height:1.1;">5</div>
+          <div style="font-size:13px;color:#c79b8c;">Estimates run 3 to 13 — talk it through, then re-vote or accept.</div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:14px;">
+          <div style="flex:1;background:#0f1c16;border:1px solid rgba(150,180,150,0.12);border-radius:10px;padding:10px;text-align:center;"><div style="font-family:'Playfair Display',serif;font-size:20px;">3</div><div style="font-size:11px;color:#8b9a8f;">LOW</div></div>
+          <div style="flex:1;background:#0f1c16;border:1px solid rgba(150,180,150,0.12);border-radius:10px;padding:10px;text-align:center;"><div style="font-family:'Playfair Display',serif;font-size:20px;">5</div><div style="font-size:11px;color:#8b9a8f;">MODE</div></div>
+          <div style="flex:1;background:#0f1c16;border:1px solid rgba(150,180,150,0.12);border-radius:10px;padding:10px;text-align:center;"><div style="font-family:'Playfair Display',serif;font-size:20px;">13</div><div style="font-size:11px;color:#8b9a8f;">HIGH</div></div>
+        </div>
+      </div>
+
+      <!-- your vote -->
+      <div style="background:#12211b;border:1px solid rgba(150,180,150,0.12);border-radius:16px;padding:18px 12px 22px;margin-bottom:14px;">
+        <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#d8b25f;font-weight:700;text-align:center;margin-bottom:16px;">Your vote</div>
+        <div style="display:flex;justify-content:center;align-items:flex-end;height:104px;">
+          <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(-30deg) translateY(16px);margin:0 -6px;cursor:pointer;">1</div>
+          <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(-20deg) translateY(7px);margin:0 -6px;cursor:pointer;">2</div>
+          <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(-10deg) translateY(1px);margin:0 -6px;cursor:pointer;">3</div>
+          <div style="width:58px;height:82px;background:#fff;color:#1c2b22;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:25px;transform:translateY(-16px);margin:0 -2px;box-shadow:0 14px 30px rgba(0,0,0,.45);border:2px solid #d6ac4f;z-index:3;cursor:pointer;">5<span style="font-size:8px;letter-spacing:0.1em;color:#8a7a4a;font-family:'Public Sans';">YOUR PICK</span></div>
+          <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(10deg) translateY(1px);margin:0 -6px;cursor:pointer;">8</div>
+          <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(20deg) translateY(7px);margin:0 -6px;cursor:pointer;">13</div>
+          <div style="width:52px;height:74px;background:#f3ebd5;color:#1c2b22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;transform:rotate(30deg) translateY(16px);margin:0 -6px;cursor:pointer;">?</div>
+        </div>
+        <div style="text-align:center;font-size:12px;color:#8b9a8f;margin-top:10px;">You played 5 · tap another card to change it before the host accepts a value.</div>
+      </div>
+
+      <!-- host actions -->
+      <sc-if value="{{ revealHost }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#0f1c16;border:1px solid rgba(150,180,150,0.12);border-radius:14px;padding:14px 18px;margin-bottom:12px;">
+        <button style="background:transparent;color:#e9e5d9;border:1px solid rgba(150,180,150,0.25);border-radius:10px;padding:12px 16px;font:inherit;font-weight:600;cursor:pointer;">↺ Re-vote this item</button>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;color:#8b9a8f;">Accept</span>
+          <select style="background:#0e1a15;border:1px solid rgba(150,180,150,0.2);border-radius:9px;color:#e9e5d9;padding:11px 13px;font:inherit;cursor:pointer;"><option>5</option><option>3</option><option>8</option><option>13</option></select>
+          <button style="background:#d6ac4f;color:#1a2118;border:none;border-radius:10px;padding:12px 20px;font:inherit;font-weight:700;cursor:pointer;">Confirm · next item →</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;background:#0f1c16;border:1px solid rgba(150,180,150,0.12);border-radius:14px;padding:12px 18px;">
+        <span style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#8b9a8f;font-weight:700;">Results &amp; export</span>
+        <button style="background:transparent;color:#cdd6ce;border:1px solid rgba(150,180,150,0.22);border-radius:9px;padding:9px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;">Show results (0)</button>
+        <button style="margin-left:auto;background:transparent;color:#d1857a;border:1px solid rgba(200,110,90,0.3);border-radius:9px;padding:9px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;">End session</button>
+      </div>
+      </sc-if>
+
+      <!-- guest note -->
+      <sc-if value="{{ revealGuest }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b9a8f;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#7fce9b;display:inline-block;"></span>
+        You played 5 — change it any time until the host accepts a value or starts a re-vote.
+      </div>
+      </sc-if>
+    </div>
+
+  </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { screen: 'landing', joinKnown: true, qrOpen: false, revoteOpen: false, menuOpen: null, revealRole: 'guest' };
+
+  navStyle(active) {
+    return active ? 'background:#d6ac4f;color:#1a2118;border-color:#d6ac4f;' : 'background:transparent;color:#cfd8cf;';
+  }
+
+  renderVals() {
+    const s = this.state;
+    const go = (screen) => this.setState({ screen, revoteOpen: false, menuOpen: null, qrOpen: false });
+    return {
+      isLanding: s.screen === 'landing',
+      isJoin: s.screen === 'join',
+      isHost: s.screen === 'host',
+      isVoting: s.screen === 'voting',
+      isReveal: s.screen === 'reveal',
+      joinKnown: s.joinKnown,
+      joinFirst: !s.joinKnown,
+      revealGuest: s.revealRole === 'guest',
+      revealHost: s.revealRole === 'host',
+      qrOpen: s.qrOpen,
+      revoteOpen: s.revoteOpen,
+      menu1: s.menuOpen === '1',
+      menu2: s.menuOpen === '2',
+      navLanding: this.navStyle(s.screen === 'landing'),
+      navJoin: this.navStyle(s.screen === 'join'),
+      navHost: this.navStyle(s.screen === 'host'),
+      navVoting: this.navStyle(s.screen === 'voting'),
+      navReveal: this.navStyle(s.screen === 'reveal'),
+      segFirst: this.navStyle(!s.joinKnown),
+      segReturning: this.navStyle(s.joinKnown),
+      segGuest: this.navStyle(s.revealRole === 'guest'),
+      segHost: this.navStyle(s.revealRole === 'host'),
+      goLanding: () => go('landing'),
+      goJoin: () => go('join'),
+      goHost: () => go('host'),
+      goVoting: () => go('voting'),
+      goReveal: () => go('reveal'),
+      setFirst: () => this.setState({ joinKnown: false }),
+      setReturning: () => this.setState({ joinKnown: true }),
+      setGuest: () => this.setState({ revealRole: 'guest', revoteOpen: false }),
+      setHost: () => this.setState({ revealRole: 'host', revoteOpen: false }),
+      toggleQr: () => this.setState(p => ({ qrOpen: !p.qrOpen })),
+      toggleRevote: () => this.setState(p => ({ revoteOpen: !p.revoteOpen })),
+      toggleMenu1: () => this.setState(p => ({ menuOpen: p.menuOpen === '1' ? null : '1' })),
+      toggleMenu2: () => this.setState(p => ({ menuOpen: p.menuOpen === '2' ? null : '2' })),
+    };
+  }
+}
+</script>
+</body>
+</html>

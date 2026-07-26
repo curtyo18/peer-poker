@@ -18,6 +18,8 @@ export type ItemStatus = 'pending' | 'voting' | 'revealed' | 'accepted';
 export interface AgendaItem {
   id: string;
   title: string;
+  /** Optional reference link, stored as given with a scheme prefixed if missing. ADR-0003. */
+  url?: string;
   status: ItemStatus;
   votes: Record<string, CardValue>;
   acceptedEstimate: CardValue | null;

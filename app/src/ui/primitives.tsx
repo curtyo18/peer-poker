@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, CSSProperties, HTMLAttributes, ReactNode } from 'react';
 
-export const panelClass = 'rounded-2xl border border-border bg-surface p-4 sm:p-[18px]';
+export const panelClass = 'rounded-2xl border border-border bg-surface p-[18px] sm:p-6';
+export const insetClass = 'rounded-xl border border-border bg-surface-2 p-3.5 sm:p-4';
 export const feltClass =
   'rounded-[20px] border border-felt-border text-felt-fg shadow-[inset_0_1px_0_rgba(255,255,255,.05),0_24px_50px_-24px_rgba(0,0,0,.6)]';
 export const feltGradient = {
@@ -13,22 +14,29 @@ export const feltGradient = {
 } as CSSProperties;
 export const fieldClass = 'flex flex-col gap-1.5';
 export const labelClass = 'text-sm font-medium text-muted';
+// Placeholder colour is owned by the global `::placeholder` rule in index.css; a
+// `placeholder:` utility here would override it, so deliberately none is set.
 export const inputClass =
-  'rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg placeholder:text-muted/70 transition-colors focus-visible:border-accent';
+  'rounded-[10px] border border-border-strong bg-input-bg px-3.5 py-2.5 text-sm text-fg ' +
+  'transition-colors focus-visible:border-accent';
+export const monoClass = 'font-mono tracking-[.02em]';
 
 type ButtonVariant = 'primary' | 'secondary' | 'felt' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md';
 
 const buttonBase =
-  'inline-flex items-center justify-center gap-1.5 rounded-[9px] font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center gap-1.5 rounded-[10px] font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed';
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-accent-fg hover:brightness-105 active:brightness-95',
-  secondary: 'border border-border bg-surface text-fg font-medium hover:border-accent hover:text-accent',
+  primary: 'bg-accent-btn text-accent-fg hover:brightness-105 active:brightness-95',
+  secondary:
+    'border border-border-strong bg-surface text-fg font-medium hover:border-accent hover:text-accent',
   felt: 'border border-felt-border bg-white/6 text-felt-fg font-medium hover:bg-white/10',
   ghost: 'text-muted font-medium hover:text-fg',
+  // A destructive action needs a resting signal, not just a hover one — the border carries the
+  // warning at rest and deepens to the full danger colour under the pointer.
   danger:
-    'border border-border bg-surface text-muted font-medium hover:border-alert-border hover:text-alert-fg hover:bg-alert-bg',
+    'border border-danger-border bg-surface text-danger-text font-medium hover:border-danger-text',
 };
 
 const buttonSizes: Record<ButtonSize, string> = {
@@ -136,24 +144,6 @@ export function Badge({ children, tone = 'neutral', className = '' }: BadgeProps
   );
 }
 
-interface SectionHeadingProps {
-  eyebrow?: string;
-  title: ReactNode;
-  action?: ReactNode;
-}
-
-export function SectionHeading({ eyebrow, title, action }: SectionHeadingProps) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div>
-        {eyebrow && <Kicker className="mb-0.5">{eyebrow}</Kicker>}
-        <h2 className="text-sm font-semibold tracking-wide text-fg">{title}</h2>
-      </div>
-      {action}
-    </div>
-  );
-}
-
 interface StatusDotProps {
   tone?: 'success' | 'accent' | 'muted';
   glow?: boolean;
@@ -177,14 +167,14 @@ export function StatusDot({ tone = 'success', glow = true, className = '' }: Sta
 }
 
 const avatarPalette = [
-  '#7a5b3a',
-  '#3f6b58',
-  '#5a4a6b',
-  '#6b4a4a',
-  '#3a5a6b',
-  '#6b5a3a',
-  '#4a6b52',
-  '#5b4a6b',
+  '#2f6b8a',
+  '#7a5a3a',
+  '#3a7a6a',
+  '#6a4a7a',
+  '#8a5a3a',
+  '#5a6a3a',
+  '#4a5a6a',
+  '#7a3a5a',
 ];
 
 export function avatarColor(seed: string): string {
@@ -202,27 +192,85 @@ export function initials(name: string): string {
   return (first + last).toUpperCase() || '?';
 }
 
+// The three dimensions travel together, so they live here rather than being re-derived by every
+// caller that wants a small avatar.
+const avatarSizes = {
+  sm: 'h-[22px] w-[22px] text-[10px]',
+  md: 'h-[30px] w-[30px] text-[11px]',
+} as const;
+
 interface AvatarProps {
   name: string;
   isSelf?: boolean;
   stacked?: boolean;
+  size?: keyof typeof avatarSizes;
+  /** Fades the chip for someone the surrounding UI is treating as not-yet-acted. */
+  dimmed?: boolean;
   className?: string;
 }
 
-export function Avatar({ name, isSelf = false, stacked = false, className = '' }: AvatarProps) {
+export function Avatar({
+  name,
+  isSelf = false,
+  stacked = false,
+  size = 'md',
+  dimmed = false,
+  className = '',
+}: AvatarProps) {
   return (
     <span
-      className={`grid h-[30px] w-[30px] flex-none place-items-center rounded-full text-[11px] font-bold ${
-        stacked ? '-ml-2 border-2 border-felt-2 first:ml-0' : ''
-      } ${className}`}
+      className={`grid flex-none place-items-center rounded-full font-bold ${avatarSizes[size]} ${
+        stacked ? '-ml-2 border-2 border-surface first:ml-0' : ''
+      } ${dimmed ? 'opacity-80' : ''} ${className}`}
       style={{
         background: isSelf ? 'var(--color-accent)' : avatarColor(name),
-        // The gold self-chip needs the dark accent ink; the muted palette chips take cream.
-        color: isSelf ? 'var(--color-accent-fg)' : 'var(--color-felt-fg)',
+        // The gold self-chip needs the dark accent ink; the coloured palette chips take white.
+        color: isSelf ? 'var(--color-accent-fg)' : 'var(--color-avatar-fg)',
       }}
       title={name}
     >
       {initials(name)}
+    </span>
+  );
+}
+
+export function Mono({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <span className={`${monoClass} ${className}`}>{children}</span>;
+}
+
+export function StatTile({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex-1 rounded-[10px] border border-border bg-surface-2 p-2.5 text-center">
+      <div className="font-display text-xl text-fg">{value}</div>
+      <Kicker tone="muted">{label}</Kicker>
+    </div>
+  );
+}
+
+interface PlayerPillProps {
+  name: string;
+  voted: boolean;
+  isSelf?: boolean;
+  /** A dropped player keeps their seat until the host removes them, so silence has two causes. */
+  connected?: boolean;
+}
+
+export function PlayerPill({ name, voted, isSelf = false, connected = true }: PlayerPillProps) {
+  const status = voted ? 'voted' : connected ? 'still voting' : 'disconnected';
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs ${
+        voted
+          ? 'border-ready-border bg-ready/10 text-fg-2'
+          : 'border-border-strong bg-surface-2 text-muted'
+      }`}
+    >
+      <Avatar name={name} isSelf={isSelf} size="sm" dimmed={!voted} />
+      {name}
+      <span aria-hidden="true" className={voted ? 'text-ready' : 'text-muted'}>
+        {voted ? '✓' : connected ? '···' : '⚠'}
+      </span>
+      <span className="sr-only">{status}</span>
     </span>
   );
 }

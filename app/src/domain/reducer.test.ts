@@ -45,11 +45,26 @@ describe('applyIntent', () => {
     expect(s.items[0].votes).toEqual({});
   });
 
-  it('ignores a vote when already revealed', () => {
+  // The reveal screen hands everyone the deck again and tells them they can still change their
+  // card, so the reveal itself must not be the cut-off — the accepted estimate is.
+  it('lets a voter change their mind after the reveal', () => {
     let s = applyIntent(base(), { type: 'join', name: 'Al', role: 'voter' }, 'P1');
-    s = { ...s, revealed: true };
     s = applyIntent(s, { type: 'castVote', value: '5' }, 'P1');
-    expect(s.items[0].votes).toEqual({});
+    s = { ...s, revealed: true, items: s.items.map((i) => ({ ...i, status: 'revealed' as const })) };
+    s = applyIntent(s, { type: 'castVote', value: '8' }, 'P1');
+    expect(s.items[0].votes).toEqual({ P1: '8' });
+  });
+
+  it('ignores a vote once the estimate has been accepted', () => {
+    let s = applyIntent(base(), { type: 'join', name: 'Al', role: 'voter' }, 'P1');
+    s = applyIntent(s, { type: 'castVote', value: '5' }, 'P1');
+    s = {
+      ...s,
+      revealed: true,
+      items: s.items.map((i) => ({ ...i, status: 'accepted' as const, acceptedEstimate: '5' })),
+    };
+    s = applyIntent(s, { type: 'castVote', value: '8' }, 'P1');
+    expect(s.items[0].votes).toEqual({ P1: '5' });
   });
 
   it('changes name and role', () => {

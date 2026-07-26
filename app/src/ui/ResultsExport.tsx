@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { SessionState } from '../domain/types';
-import { Button, Panel, SectionHeading } from './primitives';
+import { Button, Kicker, Panel } from './primitives';
 
 interface ResultsExportProps {
   state: SessionState;
@@ -39,23 +39,20 @@ export function ResultsExport({ state, onEnd }: ResultsExportProps) {
 
   return (
     <Panel>
-      <SectionHeading
-        title="Results & export"
-        action={
-          <Button variant="danger" size="sm" onClick={onEnd}>
-            End session
+      <div className="flex flex-wrap items-center gap-3">
+        <Kicker tone="muted">Results &amp; export</Kicker>
+        {!showResults && (
+          <Button variant="secondary" size="sm" onClick={() => setShowResults(true)}>
+            Show results ({rows.length})
           </Button>
-        }
-      />
-
-      {!showResults && (
-        <Button variant="secondary" size="sm" onClick={() => setShowResults(true)}>
-          Show results ({rows.length})
+        )}
+        <Button variant="danger" size="sm" className="ml-auto" onClick={onEnd}>
+          End session
         </Button>
-      )}
+      </div>
 
       {showResults && (
-        <div className="space-y-3">
+        <div className="mt-4 space-y-3">
           {rows.length === 0 ? (
             <p className="text-sm text-muted">No estimates accepted yet.</p>
           ) : (

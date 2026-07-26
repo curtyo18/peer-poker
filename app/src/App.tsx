@@ -3,15 +3,14 @@ import type { DataConnection } from 'peerjs';
 import QRCode from 'qrcode';
 import { AppHeader } from './ui/AppHeader';
 import { Landing } from './ui/Landing';
-import { HostView } from './ui/HostView';
-import { ParticipantView } from './ui/ParticipantView';
-import { Button, panelClass } from './ui/primitives';
+import { JoinScreen } from './ui/JoinScreen';
+import { RoomView } from './ui/RoomView';
 import { useSession } from './store/session';
 import type { Deck, SessionState } from './domain/types';
 import { createHostPeer, connectToHost, isRoomMissingError } from './net/peer';
 import { makeHostConn } from './net/hostConn';
 import { makeGuestConn } from './net/guestConn';
-import { setPeer, setHost, setGuest, teardownLive } from './net/live';
+import { setPeer, setHost, setGuest, getHost, teardownLive } from './net/live';
 import {
   loadSession,
   clearSession,
@@ -26,15 +25,16 @@ import { FIBONACCI } from './domain/decks';
 import { decideEntry } from './domain/entry';
 import { roomIdFromCode, randomRoomCode } from './net/roomId';
 
-type Mode = 'landing' | 'host' | 'guest';
+type Mode = 'landing' | 'join' | 'host' | 'guest';
 type Terminal = 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
 
 const GUEST_CONNECT_TIMEOUT_MS = 15000;
 
 function App() {
   const [mode, setMode] = useState<Mode>('landing');
-  // Read on the first render, not in an effect: Landing seeds its room input from this once,
-  // so arriving a render late leaves the field empty on a shared link.
+  // Read on the first render, not in an effect: the entry decision below and the JoinScreen it
+  // routes to both read this, so arriving a render late shows the landing page for a beat on
+  // what is unambiguously an invite link.
   const [initialRoom, setInitialRoom] = useState<string | undefined>(
     () => new URLSearchParams(location.search).get('room') ?? undefined,
   );
@@ -49,32 +49,28 @@ function App() {
   const [attemptedJoin, setAttemptedJoin] = useState<
     { roomCode: string; name: string; role: 'voter' | 'observer' } | null
   >(null);
-  // Read once: localStorage is not a render-time source of truth, and the entry decision and
-  // the landing page's name prompt must agree on what this device remembered at startup.
+  // Read once: localStorage is not a render-time source of truth. It tells the join screen what
+  // this device remembered at startup, so a returning guest confirms a name instead of typing it.
   const [storedName] = useState(() => loadName());
   const state = useSession((s) => s.state);
   const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoJoinedRef = useRef(false);
   const joinAttemptRef = useRef(0);
 
   useEffect(() => {
     const room = initialRoom;
-    if (!room || autoJoinedRef.current) return;
+    if (!room) return;
     let superseded = false;
     void (async () => {
       const entry = decideEntry({
         urlRoomId: await roomIdFromCode(room),
         savedSessionRoomId: loadSession()?.state.roomId ?? null,
-        storedName,
       });
       if (superseded) return;
       // The link's code hashes to the saved session's room, so it is the readable name for a
       // room whose code we no longer store — leaving clears the code but keeps the session,
       // and a room id cannot be turned back into the code people type.
       if (entry === 'resume') setResumableCode((c) => c ?? room);
-      if (autoJoinedRef.current || entry !== 'auto-join') return;
-      autoJoinedRef.current = true;
-      void handleJoin({ roomCode: room, name: storedName, role: 'voter' });
+      if (entry === 'join') setMode('join');
     })();
     return () => { superseded = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -262,8 +258,22 @@ function App() {
     });
   };
 
+  // Backing out of an invite link is not leaving a room: nothing is live and nothing was joined.
+  // In particular it must not clear the saved room code, which a resumable host session still
+  // needs to rebuild a link people can actually reach.
+  const handleAbandonJoin = () => {
+    setInitialRoom(undefined);
+    syncUrl(undefined);
+    setMode('landing');
+  };
+
   const handleLeave = () => {
     clearConnectTimeout();
+    // A room only exists while its host has it open, so a host walking away has to say so before
+    // the peer goes down. Without this, every guest keeps rendering a live-looking room forever:
+    // guestConn only learns a session ended from an explicit message, never from a dropped
+    // connection. This is the same call ResultsExport's "End session" makes.
+    if (mode === 'host') getHost()?.end();
     teardownLive();
     useSession.getState().reset();
     clearRoomCode();
@@ -280,29 +290,14 @@ function App() {
   };
 
   const connected = mode === 'host' ? true : mode === 'guest' ? state !== null && !terminal : undefined;
+  const handleHome =
+    mode === 'landing' ? undefined : mode === 'join' ? handleAbandonJoin : handleLeave;
 
   return (
     <>
-      <AppHeader roomCode={displayRoomCode} connected={connected} onHome={mode !== 'landing' ? handleLeave : undefined} />
+      <AppHeader roomCode={displayRoomCode} connected={connected} onHome={handleHome} />
       {mode === 'landing' && (
         <>
-          {resumable && (
-            <div className="mx-auto mt-6 max-w-[1200px] px-4 sm:px-6">
-              <div className={`flex flex-wrap items-center justify-between gap-4 ${panelClass}`}>
-                <span className="text-sm text-fg">
-                  You have a prior host session for room &ldquo;{resumableCode ?? resumable.roomId}&rdquo;.
-                </span>
-                <div className="flex gap-2">
-                  <Button variant="primary" size="sm" onClick={handleResume}>
-                    Resume session
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={handleDiscard}>
-                    Discard
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
           {hostError === 'name-taken' && (
             <div className="mx-auto mt-6 max-w-[1200px] px-4 sm:px-6">
               <div
@@ -314,29 +309,44 @@ function App() {
             </div>
           )}
           <Landing
-            initialRoom={initialRoom}
-            needsName={!!initialRoom && storedName.trim() === ''}
             onHost={handleHost}
-            onJoin={handleJoin}
+            onEnterCode={(code) => { setInitialRoom(code); setMode('join'); }}
+            resume={
+              resumable
+                ? {
+                    roomLabel: resumableCode ?? resumable.roomId,
+                    onResume: handleResume,
+                    onDiscard: handleDiscard,
+                  }
+                : undefined
+            }
           />
         </>
       )}
+      {mode === 'join' && initialRoom && (
+        <JoinScreen roomCode={initialRoom} storedName={storedName} onJoin={handleJoin} />
+      )}
       {mode === 'host' && state && myPeerId && (
-        <HostView
+        <RoomView
+          role="host"
           state={state}
           shareLink={shareLink}
           roomCode={displayRoomCode}
           qrDataUrl={qrDataUrl}
           myPeerId={myPeerId}
+          terminal={terminal}
           onLeave={handleLeave}
         />
       )}
       {mode === 'guest' && (
-        <ParticipantView
+        <RoomView
+          role="guest"
           state={state}
+          shareLink={shareLink}
+          roomCode={displayRoomCode}
+          qrDataUrl={qrDataUrl}
           myPeerId={myPeerId}
           terminal={terminal}
-          roomCode={displayRoomCode}
           onHostRoom={attemptedJoin ? handleHostAttemptedRoom : undefined}
           onLeave={handleLeave}
         />

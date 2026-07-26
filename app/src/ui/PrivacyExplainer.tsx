@@ -2,11 +2,11 @@ import { useRef } from 'react';
 import { DisplayHeading, Kicker } from './primitives';
 
 const triggerClass =
-  'rounded-full border border-border bg-surface-2 px-3 py-1.5 text-sm text-muted transition-colors hover:border-accent hover:text-fg';
+  'rounded-full border border-border-strong bg-input-bg px-3 py-1.5 text-sm text-muted transition-colors hover:border-accent hover:text-fg';
 const dialogClass =
-  'w-[90vw] max-w-[600px] rounded-2xl border border-border bg-bg p-0 text-fg backdrop:bg-black/60';
+  'w-[90vw] max-w-[600px] rounded-2xl border border-border-gold bg-bg p-0 text-fg backdrop:bg-black/60';
 const closeButtonClass =
-  'rounded-full border border-border bg-surface-2 px-3 py-1.5 text-sm text-fg transition-colors hover:border-accent hover:text-accent';
+  'rounded-full border border-border-strong bg-input-bg px-3 py-1.5 text-sm text-fg transition-colors hover:border-accent hover:text-accent';
 
 const questions = [
   {
