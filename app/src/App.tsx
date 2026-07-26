@@ -10,7 +10,7 @@ import type { Deck, SessionState } from './domain/types';
 import { createHostPeer, connectToHost, isRoomMissingError } from './net/peer';
 import { makeHostConn } from './net/hostConn';
 import { makeGuestConn } from './net/guestConn';
-import { setPeer, setHost, setGuest, teardownLive } from './net/live';
+import { setPeer, setHost, setGuest, getHost, teardownLive } from './net/live';
 import {
   loadSession,
   clearSession,
@@ -269,6 +269,11 @@ function App() {
 
   const handleLeave = () => {
     clearConnectTimeout();
+    // A room only exists while its host has it open, so a host walking away has to say so before
+    // the peer goes down. Without this, every guest keeps rendering a live-looking room forever:
+    // guestConn only learns a session ended from an explicit message, never from a dropped
+    // connection. This is the same call ResultsExport's "End session" makes.
+    if (mode === 'host') getHost()?.end();
     teardownLive();
     useSession.getState().reset();
     clearRoomCode();

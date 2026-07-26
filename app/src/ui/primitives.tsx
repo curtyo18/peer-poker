@@ -269,9 +269,12 @@ interface PlayerPillProps {
   name: string;
   voted: boolean;
   isSelf?: boolean;
+  /** A dropped player keeps their seat until the host removes them, so silence has two causes. */
+  connected?: boolean;
 }
 
-export function PlayerPill({ name, voted, isSelf = false }: PlayerPillProps) {
+export function PlayerPill({ name, voted, isSelf = false, connected = true }: PlayerPillProps) {
+  const status = voted ? 'voted' : connected ? 'still voting' : 'disconnected';
   return (
     <span
       className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs ${
@@ -283,9 +286,9 @@ export function PlayerPill({ name, voted, isSelf = false }: PlayerPillProps) {
       <Avatar name={name} isSelf={isSelf} size="sm" dimmed={!voted} />
       {name}
       <span aria-hidden="true" className={voted ? 'text-ready' : 'text-muted'}>
-        {voted ? '✓' : '···'}
+        {voted ? '✓' : connected ? '···' : '⚠'}
       </span>
-      <span className="sr-only">{voted ? 'voted' : 'still voting'}</span>
+      <span className="sr-only">{status}</span>
     </span>
   );
 }

@@ -20,16 +20,16 @@ export function CardHand({ deck, myVote, disabled, onVote }: CardHandProps) {
     <div className="pb-8 sm:pb-14" role="group" aria-label="Card hand">
       {/* The fan's per-card offsets are fixed pixel values wide enough to overflow a phone
           viewport; scale the whole arc down on narrow screens instead of recomputing offsets. */}
-      <div className="relative mx-auto h-[170px] w-full max-w-[460px] origin-bottom scale-[0.72] sm:h-[250px] sm:scale-100">
+      <div className="relative mx-auto h-[130px] w-full max-w-[420px] origin-bottom scale-[0.72] sm:h-[150px] sm:scale-100">
         {deck.values.map((value, i) => {
           const offset = i - center;
           const selected = value === myVote;
           const lifted = !disabled && !selected && hovered === value;
 
-          const rotate = selected ? 0 : offset * 5.5;
-          const tx = offset * 42;
-          const restY = Math.abs(offset) ** 1.4 * 6.5;
-          const ty = selected ? -30 : lifted ? restY - 18 : restY;
+          const rotate = selected ? 0 : offset * (center === 0 ? 0 : 30 / center);
+          const tx = offset * 40;
+          const restY = offset ** 2 * 1.8;
+          const ty = selected ? -16 : lifted ? restY - 18 : restY;
 
           return (
             <PlayingCard
@@ -50,9 +50,9 @@ export function CardHand({ deck, myVote, disabled, onVote }: CardHandProps) {
                 position: 'absolute',
                 left: '50%',
                 bottom: 0,
-                width: selected ? 84 : 78,
-                height: selected ? 120 : 112,
-                marginLeft: selected ? -42 : -39,
+                width: selected ? 58 : 52,
+                height: selected ? 82 : 74,
+                marginLeft: selected ? -29 : -26,
                 transformOrigin: 'bottom center',
                 transition: 'transform .16s ease',
                 zIndex: selected ? 5 : lifted ? 6 : 1,
