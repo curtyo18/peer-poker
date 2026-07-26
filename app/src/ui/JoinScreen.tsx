@@ -24,7 +24,9 @@ export function JoinScreen({ roomCode, storedName, onJoin }: JoinScreenProps) {
         </Kicker>
         {/* The room code is what this page is *about*, so it carries the heading rather than
             being a styled div under no landmark at all. */}
-        <h1 className={`${monoClass} mb-1.5 text-[30px] tracking-[.04em] text-accent-soft`}>
+        <h1
+          className={`${monoClass} mb-1.5 break-all text-[30px] tracking-[.04em] text-accent-soft`}
+        >
           {roomCode.toUpperCase()}
         </h1>
         <div className="mb-6 text-sm text-muted">Estimate together, reveal all at once.</div>
