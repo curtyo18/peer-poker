@@ -56,7 +56,7 @@ interface LandingProps {
   /** A typed room code routes to the join screen; the landing page never joins directly. */
   onEnterCode: (code: string) => void;
   /** A prior host session on this device, offered directly above the host card. */
-  resume?: { roomLabel: string; onResume: () => void; onDiscard: () => void };
+  resume?: { roomLabel: string; pending?: boolean; onResume: () => void; onDiscard: () => void };
 }
 
 export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
@@ -130,11 +130,27 @@ export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
           <span className="text-sm text-fg">
             You have a prior host session for room &ldquo;{resume.roomLabel}&rdquo;.
           </span>
-          <div className="flex gap-2">
-            <Button variant="primary" size="sm" onClick={resume.onResume}>
-              Resume session
+          <div className="flex items-center gap-2">
+            {/* Reopening the peer is a network round-trip that can stall. Without this the
+                button looked broken, because nothing on screen changed until it succeeded. */}
+            {resume.pending && (
+              <span className="flex items-center gap-2 text-xs text-muted" role="status">
+                <span
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 animate-spin-slow rounded-full border-2 border-muted border-t-transparent"
+                />
+                Reopening the room&hellip;
+              </span>
+            )}
+            <Button variant="primary" size="sm" onClick={resume.onResume} disabled={resume.pending}>
+              {resume.pending ? 'Resuming…' : 'Resume session'}
             </Button>
-            <Button variant="secondary" size="sm" onClick={resume.onDiscard}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={resume.onDiscard}
+              disabled={resume.pending}
+            >
               Discard
             </Button>
           </div>
