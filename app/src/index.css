@@ -31,9 +31,14 @@
   --color-verdict-fg: #d19484;
   --color-verdict-num: #f0d9c8;
   --color-link: #8ec6e0;
+  /* 4.49:1 on --color-surface, and deliberately left there: this is only ever a histogram bar
+     fill (Histogram.tsx), never text, so it answers to the 3:1 non-text floor. Don't "fix" it. */
   --color-outlier: #b8735f;
   --color-danger-text: #d1857a;
-  --color-placeholder: #6f7d72;
+  /* Measured, not eyeballed: the handoff's #6f7d72 reads 3.85:1 on --color-surface. Placeholders
+     here carry the field's meaning ("Reference link (optional) — https://jira…"), so they are
+     content, not decoration, and take the same 4.5:1 floor as any other text. */
+  --color-placeholder: #7c897f;
   /* Not in the handoff, but PlayingCard.tsx still draws a card border from it. */
   --color-card-edge: #d8cca6;
 }
@@ -67,8 +72,16 @@
   --color-accent-fg: #fff8e6;
   --color-card: #fffdf6;
   --color-card-ink: #1c2b22;
-  --color-ready: #1c6f3f;
-  --color-ready-border: rgba(28, 111, 63, 0.42);
+  /* Darker than it looks like it needs to be: the "voted" pill draws this glyph on top of its own
+     bg-ready/10 tint, which lifts the backdrop and cost the tick 4.43:1. Measured on the composite,
+     not on the surface underneath it. */
+  --color-ready: #186237;
+  --color-ready-border: rgba(24, 98, 55, 0.42);
+  /* The status dot's green is otherwise theme-independent — a legacy of the pre-redesign palette,
+     where every surface was dark. On cream it measured 1.50:1: a "live" indicator nobody can see.
+     It tracks `ready` here, since both mean the same thing to a reader. */
+  --color-success: #186237;
+  --color-success-ink: #f2f8f3;
   --color-danger-border: rgba(163, 58, 44, 0.4);
   --color-verdict-bg: #f6e2da;
   --color-verdict-border: rgba(160, 80, 60, 0.4);
