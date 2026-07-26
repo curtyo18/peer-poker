@@ -29,15 +29,21 @@ export function isBuiltinDeck(id: string): boolean {
 }
 
 /**
- * Top up whatever is saved with any built-in it is missing, each checked on its own.
+ * Top up whatever is saved with any built-in it is missing, each checked on its own, and
+ * resync any built-in already present to its current definition.
  *
  * Checking for one deck and returning early meant a built-in added later never reached anyone
  * who already had decks saved — which is everyone who has used the app before. Missing built-ins
  * go in front, in declaration order; the user's own decks keep the order they were in.
+ *
+ * Built-ins are read-only (see isBuiltinDeck) so a saved copy is never a user edit — it's just a
+ * stale snapshot from whenever it was seeded. Without the resync, changing a built-in's values in
+ * code (e.g. adding a card) silently never reaches anyone who already had it cached.
  */
 export function seedDecks(saved: Deck[]): Deck[] {
+  const current = saved.map((d) => BUILTIN_DECKS.find((b) => b.id === d.id) ?? d);
   const missing = BUILTIN_DECKS.filter((b) => !saved.some((d) => d.id === b.id));
-  return missing.length === 0 ? saved : [...missing, ...saved];
+  return missing.length === 0 ? current : [...missing, ...current];
 }
 
 export function validateDeck(deck: Deck): string | null {
