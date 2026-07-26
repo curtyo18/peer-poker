@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Deck } from '../domain/types';
-import { newDeck, validateDeck } from '../domain/decks';
+import { isBuiltinDeck, newDeck, validateDeck } from '../domain/decks';
 import { loadDecks, saveDecks } from '../store/persistence';
 import { PlayingCard } from './PlayingCard';
 import { Badge, Button, DisplayHeading, Kicker, fieldClass, inputClass, labelClass } from './primitives';
@@ -117,7 +117,7 @@ export function DeckManager({ open, onClose }: DeckManagerProps) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           {decks.map((deck) => {
-            const readOnly = deck.id === 'builtin-fibonacci';
+            const readOnly = isBuiltinDeck(deck.id);
             const isEditing = editingId === deck.id;
             return (
               <div

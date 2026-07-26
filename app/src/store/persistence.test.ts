@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { loadName, saveName, loadDecks, saveDecks, loadRoomCode, saveRoomCode, clearRoomCode } from './persistence';
-import { FIBONACCI, newDeck } from '../domain/decks';
+import { BUILTIN_DECKS, FIBONACCI, TSHIRT, newDeck } from '../domain/decks';
 
 beforeEach(() => localStorage.clear());
 
@@ -14,16 +14,17 @@ describe('persistence', () => {
     expect(loadName()).toBe('');
   });
 
-  it('seeds Fibonacci when no decks saved', () => {
-    expect(loadDecks()).toEqual([FIBONACCI]);
+  it('seeds the built-in decks when none are saved', () => {
+    expect(loadDecks()).toEqual(BUILTIN_DECKS);
   });
 
-  it('round-trips custom decks (plus seeded Fibonacci)', () => {
-    const t = newDeck('T-shirt', ['S', 'M', 'L']);
+  it('round-trips custom decks (plus the seeded built-ins)', () => {
+    const t = newDeck('Mine', ['S', 'M', 'L']);
     saveDecks([t]);
     const loaded = loadDecks();
     expect(loaded).toContainEqual(t);
     expect(loaded).toContainEqual(FIBONACCI);
+    expect(loaded).toContainEqual(TSHIRT);
   });
 
   it('does not throw when localStorage is unavailable', () => {

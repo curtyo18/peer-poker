@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { CardValue, SessionState, Participant, AgendaItem } from '../domain/types';
-import { FIBONACCI } from '../domain/decks';
+import type { CardValue, Deck, SessionState, Participant, AgendaItem } from '../domain/types';
+import { FIBONACCI, TSHIRT } from '../domain/decks';
 import { applyIntent } from '../domain/reducer';
 import { RevealStage } from './RevealStage';
 
 interface Overrides {
+  deck?: Deck;
   votes?: Record<string, CardValue>;
   participants?: Participant[];
   myPeerId?: string;
@@ -28,7 +29,7 @@ function base(overrides: Overrides) {
     roomId: 'FROG-42',
     hostPeerId: 'host',
     hostVotes: true,
-    deck: FIBONACCI,
+    deck: overrides.deck ?? FIBONACCI,
     participants: overrides.participants ?? [
       { peerId: 'p1', name: 'Ana', role: 'voter', connected: true },
       { peerId: 'p2', name: 'Ben', role: 'voter', connected: true },
@@ -205,6 +206,23 @@ describe('RevealStage', () => {
     render(<RevealStage {...hostProps({ myPeerId: 'host', participants: [] })} />);
     expect(screen.queryByRole('group', { name: /card hand/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/you played/i)).not.toBeInTheDocument();
+  });
+
+  // A T-shirt round has no numeric votes at all, so there is no low and no high to report — but
+  // there is still a most-picked size, and the reveal has to stand up rather than render tiles
+  // with nothing in them.
+  it('reveals a non-numeric round with a most-picked size and no range', () => {
+    render(<RevealStage {...hostProps({ deck: TSHIRT, votes: { p1: 'M', p2: 'M', p3: 'L' } })} />);
+    const tile = screen.getByText('MOST PICKED').parentElement as HTMLElement;
+    expect(within(tile).getByText('M')).toBeInTheDocument();
+    expect(screen.queryByText('LOW')).not.toBeInTheDocument();
+    expect(screen.queryByText('HIGH')).not.toBeInTheDocument();
+    expect(screen.queryByText(/estimates run/i)).not.toBeInTheDocument();
+  });
+
+  it('offers the most-picked size as the estimate to accept', () => {
+    render(<RevealStage {...hostProps({ deck: TSHIRT, votes: { p1: 'L', p2: 'L' } })} />);
+    expect(screen.getByLabelText(/accept/i)).toHaveValue('L');
   });
 
 });
