@@ -21,7 +21,9 @@ export function ResumeScreen({ roomLabel, pending, onResume, onDiscard }: Resume
         <Kicker tone="muted" className="mb-3.5">
           You&rsquo;re about to resume
         </Kicker>
-        <h1 className={`${monoClass} mb-1.5 text-[30px] tracking-[.04em] text-accent-soft`}>
+        <h1
+          className={`${monoClass} mb-1.5 break-all text-[30px] tracking-[.04em] text-accent-soft`}
+        >
           {roomLabel.toUpperCase()}
         </h1>
         <div className="mb-6 text-sm text-muted">This device hosted this room before.</div>
