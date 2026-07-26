@@ -21,4 +21,32 @@ describe('makeGuestConn', () => {
     guest.vote('5');
     expect(send).toHaveBeenCalledWith({ type: 'castVote', value: '5' });
   });
+
+  it('passes a nudge from the host on to the UI', () => {
+    useSession.getState().reset();
+    const onNudge = vi.fn();
+    const guest = makeGuestConn({ on: vi.fn(), send: vi.fn() } as never, undefined, onNudge);
+    guest.handleData({
+      type: 'state',
+      state: { ...useSession.getState().blankState('R', FIBONACCI), hostPeerId: 'HOST' },
+    });
+
+    guest.handleData({ type: 'nudge', from: 'HOST' });
+    expect(onNudge).toHaveBeenCalledTimes(1);
+  });
+
+  // The nudge carries no recipient list, so `from` is the only thing establishing that the room's
+  // host sent it rather than some other peer holding a data channel to us.
+  it('ignores a nudge that did not come from the host', () => {
+    useSession.getState().reset();
+    const onNudge = vi.fn();
+    const guest = makeGuestConn({ on: vi.fn(), send: vi.fn() } as never, undefined, onNudge);
+    guest.handleData({
+      type: 'state',
+      state: { ...useSession.getState().blankState('R', FIBONACCI), hostPeerId: 'HOST' },
+    });
+
+    guest.handleData({ type: 'nudge', from: 'SOMEONE-ELSE' });
+    expect(onNudge).not.toHaveBeenCalled();
+  });
 });

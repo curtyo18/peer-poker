@@ -7,12 +7,17 @@ import { JoinScreen } from './ui/JoinScreen';
 import { RoomView } from './ui/RoomView';
 import { useSession } from './store/session';
 import type { Deck, SessionState } from './domain/types';
-import { createHostPeer, connectToHost, isRoomMissingError } from './net/peer';
+import { createHostPeer, connectToHost, isRoomMissingError, type HostPeer } from './net/peer';
+import { attachHostLifecycle, type BrokerStatus, type HostLifecycle } from './net/hostLifecycle';
 import { makeHostConn } from './net/hostConn';
 import { makeGuestConn } from './net/guestConn';
 import { setPeer, setHost, setGuest, getHost, teardownLive } from './net/live';
+import { BrokerNotice } from './ui/BrokerNotice';
+import { Button } from './ui/primitives';
+import { rekeyHost } from './domain/rekey';
 import {
   loadSession,
+  saveSession,
   clearSession,
   loadRoomCode,
   saveRoomCode,
@@ -27,6 +32,10 @@ import { roomIdFromCode, randomRoomCode } from './net/roomId';
 
 type Mode = 'landing' | 'join' | 'host' | 'guest';
 type Terminal = 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
+// 'name-taken' is someone else holding the room name you asked for; 'resume-id-taken' is the
+// broker still holding *your own* previous id, which is a different problem with different ways
+// out. 'broker-unreachable' is the peer never opening at all.
+type HostError = 'name-taken' | 'resume-id-taken' | 'broker-unreachable' | null;
 
 const GUEST_CONNECT_TIMEOUT_MS = 15000;
 
@@ -44,7 +53,11 @@ function App() {
   const [terminal, setTerminal] = useState<Terminal>(null);
   const [resumable, setResumable] = useState<{ roomId: string; state: SessionState } | null>(null);
   const [resumableCode, setResumableCode] = useState<string | null>(null);
-  const [hostError, setHostError] = useState<'name-taken' | null>(null);
+  const [hostError, setHostError] = useState<HostError>(null);
+  const [brokerStatus, setBrokerStatus] = useState<BrokerStatus>('connecting');
+  // A counter rather than a boolean: a second nudge has to be distinguishable from the first.
+  const [nudgeSignal, setNudgeSignal] = useState(0);
+  const [resuming, setResuming] = useState(false);
   const [displayRoomCode, setDisplayRoomCode] = useState<string | undefined>(undefined);
   const [attemptedJoin, setAttemptedJoin] = useState<
     { roomCode: string; name: string; role: 'voter' | 'observer' } | null
@@ -55,6 +68,11 @@ function App() {
   const state = useSession((s) => s.state);
   const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const joinAttemptRef = useRef(0);
+  const lifecycleRef = useRef<HostLifecycle | null>(null);
+  // Whether the host peer has ever opened. A fatal error before that means the room never
+  // started; the same error after means a running room lost its registration, which must not
+  // tear down a session people are already playing in.
+  const hostOpenedRef = useRef(false);
 
   useEffect(() => {
     const room = initialRoom;
@@ -79,6 +97,9 @@ function App() {
     setResumable(loadSession());
     setResumableCode(loadRoomCode());
   }, []);
+
+  // A pending reconnect timer outlives the component otherwise.
+  useEffect(() => () => lifecycleRef.current?.cancel(), []);
 
   useEffect(() => {
     if (!shareLink) {
@@ -117,6 +138,48 @@ function App() {
     }
   };
 
+  const abandonHostPeer = () => {
+    lifecycleRef.current?.cancel();
+    lifecycleRef.current = null;
+    teardownLive();
+  };
+
+  /**
+   * Open a host peer with its full lifecycle wired up.
+   *
+   * Hosting and resuming differ only in what they do once the peer is open; the backoff, the
+   * status reporting and the fatal-error handling are identical, and lived in two copies that
+   * had already drifted — resume had neither an `error` nor a `disconnected` handler, so a peer
+   * that failed to open left `ready` pending forever and the Resume button did nothing at all,
+   * with no spinner and no error.
+   */
+  const openHostPeer = (
+    { desiredId, label, onFatal }:
+    { desiredId: string; label: string; onFatal: (kind: 'id-taken' | 'rejected') => void },
+  ) => {
+    lifecycleRef.current?.cancel();
+    hostOpenedRef.current = false;
+    setBrokerStatus('connecting');
+    const hp = createHostPeer(desiredId);
+    setPeer(hp.peer);
+    lifecycleRef.current = attachHostLifecycle({
+      peer: hp.peer,
+      label,
+      onStatus: setBrokerStatus,
+      onFailure: (kind) => {
+        if (!hostOpenedRef.current) {
+          onFatal(kind);
+          return;
+        }
+        // A room that has already opened has not stopped working for the people in it — their
+        // data channels are direct. It has only stopped being reachable, so say that instead.
+        setBrokerStatus('offline');
+      },
+    });
+    void hp.ready.then(() => { hostOpenedRef.current = true; });
+    return hp;
+  };
+
   const handleHost = async (
     { deck, name, hostVotes, roomName }: { deck: Deck; name: string; hostVotes: boolean; roomName: string },
   ) => {
@@ -125,22 +188,14 @@ function App() {
     const id = await roomIdFromCode(code);
     saveRoomCode(code);
     setDisplayRoomCode(code);
-    const hp = createHostPeer(id);
-    setPeer(hp.peer);
-    hp.peer.on('error', (e) => {
-      const { type, message } = e as { type?: string; message?: string };
-      console.error('[peerpoker] host peer error', { type, message, code });
-      if (type === 'unavailable-id') {
-        setHostError('name-taken');
-        teardownLive();
+    const hp = openHostPeer({
+      desiredId: id,
+      label: code,
+      onFatal: (kind) => {
+        setHostError(kind === 'id-taken' ? 'name-taken' : 'broker-unreachable');
+        abandonHostPeer();
         setMode('landing');
-      }
-    });
-    // A peer that loses the broker keeps its open connections but stops being reachable, so
-    // the room looks fine to the host while nobody new can join it.
-    hp.peer.on('disconnected', () => {
-      console.warn('[peerpoker] host lost the signalling broker — reconnecting');
-      try { hp.peer.reconnect(); } catch { /* destroyed peer: nothing to reconnect */ }
+      },
     });
     hp.ready.then((assignedId) => {
       useSession.getState().initHost(assignedId, deck, hostVotes);
@@ -158,28 +213,70 @@ function App() {
     });
   };
 
-  const handleResume = async () => {
+  // Everything that happens once a resumed peer is actually open. Both resume paths land here;
+  // they differ only in which state and which room code they arrive with.
+  const enterResumedRoom = (hp: HostPeer, state: SessionState, code: string) => {
+    useSession.getState().resumeHost(state);
+    const host = makeHostConn();
+    setHost(host);
+    hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
+    saveRoomCode(code);
+    setShareLink(buildLink(code));
+    syncUrl(code);
+    setDisplayRoomCode(code);
+    setMyPeerId(state.hostPeerId);
+    host.broadcast();
+    setResuming(false);
+    setResumable(null);
+    setMode('host');
+  };
+
+  const handleResume = () => {
     const saved = loadSession();
     if (!saved) return;
     setHostError(null);
-    const hp = createHostPeer(saved.state.roomId);
-    setPeer(hp.peer);
+    setResuming(true);
+    const hp = openHostPeer({
+      desiredId: saved.state.roomId,
+      label: saved.state.roomId,
+      onFatal: (kind) => {
+        setResuming(false);
+        // The broker has not yet reaped the id this room used to hold. Waiting usually clears
+        // it, so this offers the wait — it does not silently take a new id, which would change
+        // the room id and kill the invite link people already have.
+        setHostError(kind === 'id-taken' ? 'resume-id-taken' : 'broker-unreachable');
+        abandonHostPeer();
+      },
+    });
     hp.ready.then(() => {
-      useSession.getState().resumeHost(saved.state);
-      const host = makeHostConn();
-      setHost(host);
-      hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
       // Fall back to the code from the link before the room id: an id is a one-way hash of a
       // code, so a link built from one would send joiners to a room that cannot exist.
-      const code = loadRoomCode() ?? resumableCode ?? saved.state.roomId;
-      saveRoomCode(code);
-      setShareLink(buildLink(code));
-      syncUrl(code);
-      setDisplayRoomCode(code);
-      setMyPeerId(saved.state.hostPeerId);
-      host.broadcast();
-      setResumable(null);
-      setMode('host');
+      enterResumedRoom(hp, saved.state, loadRoomCode() ?? resumableCode ?? saved.state.roomId);
+    });
+  };
+
+  // The way out when the old id stays taken: keep the agenda and the votes, take a new room
+  // code, and accept that the previous link is dead. The copy on the button has to say so.
+  const handleResumeFresh = async () => {
+    const saved = loadSession();
+    if (!saved) return;
+    setHostError(null);
+    setResuming(true);
+    const code = randomRoomCode();
+    const id = await roomIdFromCode(code);
+    const state = rekeyHost(saved.state, id);
+    const hp = openHostPeer({
+      desiredId: id,
+      label: code,
+      onFatal: (kind) => {
+        setResuming(false);
+        setHostError(kind === 'id-taken' ? 'resume-id-taken' : 'broker-unreachable');
+        abandonHostPeer();
+      },
+    });
+    hp.ready.then(() => {
+      saveSession(state.roomId, state);
+      enterResumedRoom(hp, state, code);
     });
   };
 
@@ -188,6 +285,7 @@ function App() {
     clearRoomCode();
     setHostError(null);
     setResumable(null);
+    setResuming(false);
   };
 
   const handleJoin = async (
@@ -231,7 +329,11 @@ function App() {
     }, GUEST_CONNECT_TIMEOUT_MS);
 
     conn = await pendingConn;
-    const guest = makeGuestConn(conn, (s) => setTerminal(s === 'kicked' ? 'kicked' : 'ended'));
+    const guest = makeGuestConn(
+      conn,
+      (s) => setTerminal(s === 'kicked' ? 'kicked' : 'ended'),
+      () => setNudgeSignal((n) => n + 1),
+    );
     setGuest(guest);
     conn.on('open', () => guest.join(name, role));
   };
@@ -244,7 +346,7 @@ function App() {
     const deck = decks.find((d) => d.id === lastId) ?? FIBONACCI;
     clearConnectTimeout();
     joinAttemptRef.current++;
-    teardownLive();
+    abandonHostPeer();
     useSession.getState().reset();
     setTerminal(null);
     setMyPeerId(undefined);
@@ -274,10 +376,12 @@ function App() {
     // guestConn only learns a session ended from an explicit message, never from a dropped
     // connection. This is the same call ResultsExport's "End session" makes.
     if (mode === 'host') getHost()?.end();
-    teardownLive();
+    abandonHostPeer();
     useSession.getState().reset();
     clearRoomCode();
     setHostError(null);
+    setBrokerStatus('connecting');
+    setResuming(false);
     setShareLink('');
     setQrDataUrl(null);
     setMyPeerId(undefined);
@@ -289,22 +393,58 @@ function App() {
     setMode('landing');
   };
 
-  const connected = mode === 'host' ? true : mode === 'guest' ? state !== null && !terminal : undefined;
+  // A host used to be hardcoded connected, so the header showed a green dot and the room code
+  // with the broker gone entirely. It now tracks the real peer state.
+  const connected =
+    mode === 'host'
+      ? brokerStatus === 'online'
+      : mode === 'guest'
+        ? state !== null && !terminal
+        : undefined;
   const handleHome =
     mode === 'landing' ? undefined : mode === 'join' ? handleAbandonJoin : handleLeave;
 
   return (
     <>
       <AppHeader roomCode={displayRoomCode} connected={connected} onHome={handleHome} />
+      {mode === 'host' && (
+        <BrokerNotice status={brokerStatus} onRetry={() => lifecycleRef.current?.retry()} />
+      )}
       {mode === 'landing' && (
         <>
-          {hostError === 'name-taken' && (
+          {hostError && (
             <div className="mx-auto mt-6 max-w-[1200px] px-4 sm:px-6">
               <div
                 role="alert"
                 className="rounded-2xl border border-alert-border bg-alert-bg px-5 py-4 text-sm text-alert-fg"
               >
-                That room name is already in use right now — pick another.
+                {hostError === 'name-taken' &&
+                  'That room name is already in use right now — pick another.'}
+                {hostError === 'broker-unreachable' &&
+                  'Could not reach the signalling service, so the room never opened. Check your connection and try again.'}
+                {hostError === 'resume-id-taken' && (
+                  <>
+                    Your previous room is still registered with the signalling service, so it
+                    would not let us reclaim it. That usually clears within a minute or two.
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button variant="felt" size="sm" onClick={handleResume} disabled={resuming}>
+                        Try again
+                      </Button>
+                      <Button
+                        variant="felt"
+                        size="sm"
+                        onClick={handleResumeFresh}
+                        disabled={resuming}
+                      >
+                        Resume on a new link
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-alert-fg/90">
+                      A new link keeps the agenda and every vote, but changes the room code —
+                      anyone holding the old link will need the new one.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -315,6 +455,7 @@ function App() {
               resumable
                 ? {
                     roomLabel: resumableCode ?? resumable.roomId,
+                    pending: resuming,
                     onResume: handleResume,
                     onDiscard: handleDiscard,
                   }
@@ -347,6 +488,7 @@ function App() {
           qrDataUrl={qrDataUrl}
           myPeerId={myPeerId}
           terminal={terminal}
+          nudgeSignal={nudgeSignal}
           onHostRoom={attemptedJoin ? handleHostAttemptedRoom : undefined}
           onLeave={handleLeave}
         />

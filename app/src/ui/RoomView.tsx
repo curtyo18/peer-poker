@@ -15,6 +15,8 @@ interface RoomViewProps {
   qrDataUrl: string | null;
   myPeerId: string | undefined;
   terminal: 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
+  /** Guest-side: increments each time the host nudges the room. */
+  nudgeSignal?: number;
   onHostRoom?: () => void;
   onLeave: () => void;
 }
@@ -23,7 +25,7 @@ interface RoomViewProps {
 // active item, not revealed), and reveal (revealed). Each has its own stage component; this file
 // just picks one and wires up the host/guest mutation closures they need.
 export function RoomView(props: RoomViewProps) {
-  const { role, state, shareLink, roomCode, qrDataUrl, myPeerId, terminal, onHostRoom, onLeave } = props;
+  const { role, state, shareLink, roomCode, qrDataUrl, myPeerId, terminal, nudgeSignal = 0, onHostRoom, onLeave } = props;
 
   // A guest with no state yet is still connecting, or has hit a terminal state (kicked, ended,
   // unreachable, ...) before ever receiving one — this is what ParticipantView used to render.
@@ -90,8 +92,17 @@ export function RoomView(props: RoomViewProps) {
         useSession.getState().dispatch({ type: 'castVote', value }, myPeerId as string);
         getHost()?.broadcast();
       };
+      const onNudge = () => { getHost()?.nudge(); };
       return (
-        <VotingStage role="host" state={state} item={active} myPeerId={myPeerId} onVote={onVote} onMutate={onMutate} />
+        <VotingStage
+          role="host"
+          state={state}
+          item={active}
+          myPeerId={myPeerId}
+          onVote={onVote}
+          onMutate={onMutate}
+          onNudge={onNudge}
+        />
       );
     }
     const onVote = (value: CardValue) => { getGuest()?.vote(value); };
@@ -103,6 +114,7 @@ export function RoomView(props: RoomViewProps) {
         myPeerId={myPeerId}
         onVote={onVote}
         terminal={terminal}
+        nudgeSignal={nudgeSignal}
         onLeave={onLeave}
       />
     );

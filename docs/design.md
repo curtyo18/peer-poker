@@ -163,6 +163,13 @@ Host → participant (broadcast unless noted):
 - `{ type: 'state', state: SessionState }` // full snapshot; sent on connect + after any change
 - `{ type: 'kicked' }`                      // direct: host removed this peer
 - `{ type: 'sessionEnded' }`                // host is closing the room
+- `{ type: 'nudge', from: hostPeerId }`     // "play a card" — the only non-state event
+
+`nudge` is the one host → participant message that is not a state broadcast. It names no
+recipients: the host sends it to everyone and each client decides whether it applies to itself
+(a client reacts only if it is a seated voter that has not yet cast a card). Addressing it would
+mean the host computing a recipient list from a snapshot every client is already ahead of.
+It is fire-and-forget — no acknowledgement, and nothing about it is persisted on participants.
 
 Host actions are local mutations that produce a new `state` broadcast:
 create/reorder/remove item, set active item, reveal, re-vote (clear votes, `revealed=false`),

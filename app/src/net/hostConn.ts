@@ -50,5 +50,19 @@ export function makeHostConn() {
     for (const c of conns.values()) c.send({ type: 'sessionEnded' });
   }
 
-  return { onConnection, handleMessage, broadcast, kick, end };
+  /**
+   * Ask everyone still holding a card to play it.
+   *
+   * Sent to the whole room rather than to a computed recipient list: the host's own view of who
+   * has voted can be a broadcast behind, and a client always knows whether *it* has voted. So the
+   * message carries no targets and anyone who has already played simply ignores it.
+   */
+  function nudge() {
+    const state = useSession.getState().state;
+    if (!state) return;
+    const msg = { type: 'nudge', from: state.hostPeerId };
+    for (const c of conns.values()) c.send(msg);
+  }
+
+  return { onConnection, handleMessage, broadcast, kick, end, nudge };
 }
