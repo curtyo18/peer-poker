@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { AppHeader } from './ui/AppHeader';
 import { Landing } from './ui/Landing';
 import { JoinScreen } from './ui/JoinScreen';
+import { ResumeScreen } from './ui/ResumeScreen';
 import { RoomView } from './ui/RoomView';
 import { useSession } from './store/session';
 import type { Deck, SessionState } from './domain/types';
@@ -30,7 +31,7 @@ import { FIBONACCI } from './domain/decks';
 import { decideEntry } from './domain/entry';
 import { roomIdFromCode, randomRoomCode } from './net/roomId';
 
-type Mode = 'landing' | 'join' | 'host' | 'guest';
+type Mode = 'landing' | 'join' | 'resume' | 'host' | 'guest';
 type Terminal = 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
 // 'name-taken' is someone else holding the room name you asked for; 'resume-id-taken' is the
 // broker still holding *your own* previous id, which is a different problem with different ways
@@ -87,16 +88,23 @@ function App() {
       // The link's code hashes to the saved session's room, so it is the readable name for a
       // room whose code we no longer store — leaving clears the code but keeps the session,
       // and a room id cannot be turned back into the code people type.
-      if (entry === 'resume') setResumableCode((c) => c ?? room);
+      if (entry === 'resume') {
+        setResumableCode((c) => c ?? room);
+        setMode('resume');
+      }
       if (entry === 'join') setMode('join');
     })();
     return () => { superseded = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    // A URL room is handled by the effect above instead: showing the landing page's resume
+    // banner here first would race it, since that effect's entry decision needs an async hash
+    // and always moves mode off 'landing' once it resolves — this would just flash and vanish.
+    if (initialRoom) return;
     setResumable(loadSession());
     setResumableCode(loadRoomCode());
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A pending reconnect timer outlives the component otherwise.
   useEffect(() => () => lifecycleRef.current?.cancel(), []);
@@ -288,6 +296,15 @@ function App() {
     setResuming(false);
   };
 
+  // The resume screen's discard also has to back out of the invite link that put it there —
+  // the landing page's banner has nowhere else to go, but this screen does.
+  const handleDiscardFromResumeScreen = () => {
+    handleDiscard();
+    setInitialRoom(undefined);
+    syncUrl(undefined);
+    setMode('landing');
+  };
+
   const handleJoin = async (
     { roomCode, name, role }: { roomCode: string; name: string; role: 'voter' | 'observer' },
   ) => {
@@ -402,7 +419,11 @@ function App() {
         ? state !== null && !terminal
         : undefined;
   const handleHome =
-    mode === 'landing' ? undefined : mode === 'join' ? handleAbandonJoin : handleLeave;
+    mode === 'landing'
+      ? undefined
+      : mode === 'join' || mode === 'resume'
+        ? handleAbandonJoin
+        : handleLeave;
 
   return (
     <>
@@ -410,62 +431,68 @@ function App() {
       {mode === 'host' && (
         <BrokerNotice status={brokerStatus} onRetry={() => lifecycleRef.current?.retry()} />
       )}
+      {(mode === 'landing' || mode === 'resume') && hostError && (
+        <div className="mx-auto mt-6 max-w-[1200px] px-4 sm:px-6">
+          <div
+            role="alert"
+            className="rounded-2xl border border-alert-border bg-alert-bg px-5 py-4 text-sm text-alert-fg"
+          >
+            {hostError === 'name-taken' &&
+              'That room name is already in use right now — pick another.'}
+            {hostError === 'broker-unreachable' &&
+              'Could not reach the signalling service, so the room never opened. Check your connection and try again.'}
+            {hostError === 'resume-id-taken' && (
+              <>
+                Your previous room is still registered with the signalling service, so it
+                would not let us reclaim it. That usually clears within a minute or two.
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button variant="felt" size="sm" onClick={handleResume} disabled={resuming}>
+                    Try again
+                  </Button>
+                  <Button
+                    variant="felt"
+                    size="sm"
+                    onClick={handleResumeFresh}
+                    disabled={resuming}
+                  >
+                    Resume on a new link
+                  </Button>
+                </div>
+                <p className="mt-2 text-xs text-alert-fg/90">
+                  A new link keeps the agenda and every vote, but changes the room code —
+                  anyone holding the old link will need the new one.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {mode === 'landing' && (
-        <>
-          {hostError && (
-            <div className="mx-auto mt-6 max-w-[1200px] px-4 sm:px-6">
-              <div
-                role="alert"
-                className="rounded-2xl border border-alert-border bg-alert-bg px-5 py-4 text-sm text-alert-fg"
-              >
-                {hostError === 'name-taken' &&
-                  'That room name is already in use right now — pick another.'}
-                {hostError === 'broker-unreachable' &&
-                  'Could not reach the signalling service, so the room never opened. Check your connection and try again.'}
-                {hostError === 'resume-id-taken' && (
-                  <>
-                    Your previous room is still registered with the signalling service, so it
-                    would not let us reclaim it. That usually clears within a minute or two.
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button variant="felt" size="sm" onClick={handleResume} disabled={resuming}>
-                        Try again
-                      </Button>
-                      <Button
-                        variant="felt"
-                        size="sm"
-                        onClick={handleResumeFresh}
-                        disabled={resuming}
-                      >
-                        Resume on a new link
-                      </Button>
-                    </div>
-                    <p className="mt-2 text-xs text-alert-fg/90">
-                      A new link keeps the agenda and every vote, but changes the room code —
-                      anyone holding the old link will need the new one.
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-          <Landing
-            onHost={handleHost}
-            onEnterCode={(code) => { setInitialRoom(code); setMode('join'); }}
-            resume={
-              resumable
-                ? {
-                    roomLabel: resumableCode ?? resumable.roomId,
-                    pending: resuming,
-                    onResume: handleResume,
-                    onDiscard: handleDiscard,
-                  }
-                : undefined
-            }
-          />
-        </>
+        <Landing
+          onHost={handleHost}
+          onEnterCode={(code) => { setInitialRoom(code); setMode('join'); }}
+          resume={
+            resumable
+              ? {
+                  roomLabel: resumableCode ?? resumable.roomId,
+                  pending: resuming,
+                  onResume: handleResume,
+                  onDiscard: handleDiscard,
+                }
+              : undefined
+          }
+        />
       )}
       {mode === 'join' && initialRoom && (
         <JoinScreen roomCode={initialRoom} storedName={storedName} onJoin={handleJoin} />
+      )}
+      {mode === 'resume' && (
+        <ResumeScreen
+          roomLabel={resumableCode ?? initialRoom ?? ''}
+          pending={resuming}
+          onResume={handleResume}
+          onDiscard={handleDiscardFromResumeScreen}
+        />
       )}
       {mode === 'host' && state && myPeerId && (
         <RoomView
