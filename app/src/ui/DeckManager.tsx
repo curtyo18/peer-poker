@@ -3,10 +3,10 @@ import type { Deck } from '../domain/types';
 import { newDeck, validateDeck } from '../domain/decks';
 import { loadDecks, saveDecks } from '../store/persistence';
 import { PlayingCard } from './PlayingCard';
-import { Badge, Button, DisplayHeading, fieldClass, inputClass, labelClass } from './primitives';
+import { Badge, Button, DisplayHeading, Kicker, fieldClass, inputClass, labelClass } from './primitives';
 
 const dialogClass =
-  'w-[92vw] max-w-3xl rounded-2xl border border-border bg-bg p-0 text-fg backdrop:bg-black/60';
+  'w-[92vw] max-w-3xl rounded-2xl border border-border-gold bg-bg p-0 text-fg backdrop:bg-black/60';
 
 interface DeckManagerProps {
   open: boolean;
@@ -105,9 +105,7 @@ export function DeckManager({ open, onClose }: DeckManagerProps) {
       <section className="max-h-[85vh] overflow-y-auto p-6 sm:p-8">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <span className="text-[11px] font-semibold uppercase tracking-[.16em] text-accent">
-              Deck manager
-            </span>
+            <Kicker>Deck manager</Kicker>
             <DisplayHeading as="h2" className="mt-1 text-2xl sm:text-[28px]">
               Choose the cards on the table
             </DisplayHeading>

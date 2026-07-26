@@ -1,4 +1,4 @@
-import { Button, DisplayHeading, panelClass } from './primitives';
+import { Button, DisplayHeading, Mono, panelClass } from './primitives';
 
 const terminalCopy = {
   kicked: {
@@ -49,10 +49,6 @@ export function ConnState({
   if (terminal) {
     const copy = terminalCopy[terminal];
     const isAlert = copy.tone === 'alert';
-    const title =
-      terminal === 'not-found' && roomCode
-        ? `Nobody’s hosting ${roomCode.toUpperCase()}`
-        : copy.title;
     return (
       <section
         className={
@@ -63,7 +59,13 @@ export function ConnState({
         role="alert"
       >
         <DisplayHeading as="h2" className="text-xl">
-          {title}
+          {terminal === 'not-found' && roomCode ? (
+            <>
+              Nobody&rsquo;s hosting <Mono className="text-accent-soft">{roomCode.toUpperCase()}</Mono>
+            </>
+          ) : (
+            copy.title
+          )}
         </DisplayHeading>
         <p className={`mt-2 text-sm leading-relaxed ${isAlert ? 'text-alert-fg/90' : 'text-muted'}`}>
           {copy.body}

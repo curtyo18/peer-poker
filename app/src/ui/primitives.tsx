@@ -144,24 +144,6 @@ export function Badge({ children, tone = 'neutral', className = '' }: BadgeProps
   );
 }
 
-interface SectionHeadingProps {
-  eyebrow?: string;
-  title: ReactNode;
-  action?: ReactNode;
-}
-
-export function SectionHeading({ eyebrow, title, action }: SectionHeadingProps) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div>
-        {eyebrow && <Kicker className="mb-0.5">{eyebrow}</Kicker>}
-        <h2 className="text-sm font-semibold tracking-wide text-fg">{title}</h2>
-      </div>
-      {action}
-    </div>
-  );
-}
-
 interface StatusDotProps {
   tone?: 'success' | 'accent' | 'muted';
   glow?: boolean;

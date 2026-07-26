@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { loadTheme, toggleTheme, type Theme } from '../theme/theme';
 
 const buttonClass =
-  'flex items-center justify-center h-[34px] w-[34px] rounded-lg border border-border ' +
-  'bg-surface-2 text-fg hover:border-accent hover:text-accent transition-colors';
+  'flex items-center justify-center h-[34px] w-[34px] rounded-[10px] border border-border-strong ' +
+  'bg-input-bg text-fg hover:border-accent hover:text-accent transition-colors';
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(() => loadTheme());

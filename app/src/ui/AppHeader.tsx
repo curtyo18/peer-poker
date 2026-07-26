@@ -1,6 +1,6 @@
 import { PrivacyExplainer } from './PrivacyExplainer';
 import { ThemeToggle } from './ThemeToggle';
-import { StatusDot } from './primitives';
+import { Mono, StatusDot } from './primitives';
 
 interface AppHeaderProps {
   roomCode?: string;
@@ -32,10 +32,11 @@ export function AppHeader({ roomCode, connected = true, onHome }: AppHeaderProps
 
       <div className="flex items-center gap-2">
         {roomCode && (
-          <div className="hidden items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 text-xs tracking-[.1em] text-muted sm:flex">
+          <div className="hidden items-center gap-2 rounded-[10px] border border-border-strong px-2.5 py-1.5 text-xs text-muted sm:flex">
             <StatusDot tone={connected ? 'success' : 'muted'} />
             <span className="sr-only">{connected ? 'Connected. ' : 'Not connected. '}</span>
-            ROOM &middot; {roomCode.toUpperCase()}
+            <span className="tracking-[.1em]">ROOM</span>
+            <Mono className="text-accent-soft">{roomCode.toUpperCase()}</Mono>
           </div>
         )}
         <PrivacyExplainer />
