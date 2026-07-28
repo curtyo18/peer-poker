@@ -26,7 +26,86 @@ describe('applyIntent', () => {
     expect(s.participants[0].connected).toBe(true);
   });
 
-  it('records a voter’s vote for the active item', () => {
+  it('reconnects a new peerId into a disconnected participant with the same name', () => {
+    let s = applyIntent(base(), { type: 'join', name: 'Vikas', role: 'voter' }, 'P1');
+    s = { ...s, participants: s.participants.map((p) => ({ ...p, connected: false })) };
+    s = applyIntent(s, { type: 'join', name: 'Vikas', role: 'voter' }, 'P2');
+    expect(s.participants).toEqual([
+      { peerId: 'P2', name: 'Vikas', role: 'voter', connected: true },
+    ]);
+  });
+
+  it('does not merge into a same-named participant that is still connected', () => {
+    let s = applyIntent(base(), { type: 'join', name: 'Vikas', role: 'voter' }, 'P1');
+    s = applyIntent(s, { type: 'join', name: 'Vikas', role: 'voter' }, 'P2');
+    expect(s.participants).toEqual([
+      { peerId: 'P1', name: 'Vikas', role: 'voter', connected: true },
+      { peerId: 'P2', name: 'Vikas', role: 'voter', connected: true },
+    ]);
+  });
+
+  it('reconnects across whitespace and case differences in the typed name', () => {
+    let s = applyIntent(base(), { type: 'join', name: 'Vikas', role: 'voter' }, 'P1');
+    s = { ...s, participants: s.participants.map((p) => ({ ...p, connected: false })) };
+    s = applyIntent(s, { type: 'join', name: ' vikas ', role: 'voter' }, 'P2');
+    expect(s.participants).toEqual([
+      { peerId: 'P2', name: ' vikas ', role: 'voter', connected: true },
+    ]);
+  });
+
+  it('drops the old peerId\'s vote on the active item after a mid-round reconnect', () => {
+    let s = applyIntent(base(), { type: 'join', name: 'Vikas', role: 'voter' }, 'P1');
+    s = applyIntent(s, { type: 'castVote', value: '5' }, 'P1');
+    s = { ...s, participants: s.participants.map((p) => ({ ...p, connected: false })) };
+    s = applyIntent(s, { type: 'join', name: 'Vikas', role: 'voter' }, 'P2');
+    expect(s.items[0].votes).toEqual({});
+  });
+
+  it('drops the old peerId\'s vote on a revealed (not yet accepted) item after reconnect', () => {
+    let s = applyIntent(base(), { type: 'join', name: 'Vikas', role: 'voter' }, 'P1');
+    s = applyIntent(s, { type: 'castVote', value: '5' }, 'P1');
+    s = {
+      ...s,
+      revealed: true,
+      items: s.items.map((i) => ({ ...i, status: 'revealed' as const })),
+      participants: s.participants.map((p) => ({ ...p, connected: false })),
+    };
+    s = applyIntent(s, { type: 'join', name: 'Vikas', role: 'voter' }, 'P2');
+    expect(s.items[0].votes).toEqual({});
+  });
+
+  it('is a no-op on votes when there is no active item to reconnect into', () => {
+    let s = applyIntent(base(), { type: 'join', name: 'Vikas', role: 'voter' }, 'P1');
+    s = applyIntent(s, { type: 'castVote', value: '5' }, 'P1');
+    s = {
+      ...s,
+      activeItemId: null,
+      participants: s.participants.map((p) => ({ ...p, connected: false })),
+    };
+    s = applyIntent(s, { type: 'join', name: 'Vikas', role: 'voter' }, 'P2');
+    expect(s.items[0].votes).toEqual({ P1: '5' });
+  });
+
+  it('is a no-op on votes when the reconnecting participant never voted', () => {
+    let s = applyIntent(base(), { type: 'join', name: 'Vikas', role: 'voter' }, 'P1');
+    s = { ...s, participants: s.participants.map((p) => ({ ...p, connected: false })) };
+    s = applyIntent(s, { type: 'join', name: 'Vikas', role: 'voter' }, 'P2');
+    expect(s.items[0].votes).toEqual({});
+  });
+
+  it('leaves an accepted item\'s votes untouched after a later reconnect', () => {
+    let s = applyIntent(base(), { type: 'join', name: 'Vikas', role: 'voter' }, 'P1');
+    s = applyIntent(s, { type: 'castVote', value: '5' }, 'P1');
+    s = {
+      ...s,
+      items: s.items.map((i) => ({ ...i, status: 'accepted' as const, acceptedEstimate: '5' })),
+      participants: s.participants.map((p) => ({ ...p, connected: false })),
+    };
+    s = applyIntent(s, { type: 'join', name: 'Vikas', role: 'voter' }, 'P2');
+    expect(s.items[0].votes).toEqual({ P1: '5' });
+  });
+
+  it('records a voter\'s vote for the active item', () => {
     let s = applyIntent(base(), { type: 'join', name: 'Al', role: 'voter' }, 'P1');
     s = applyIntent(s, { type: 'castVote', value: '5' }, 'P1');
     expect(s.items[0].votes).toEqual({ P1: '5' });
