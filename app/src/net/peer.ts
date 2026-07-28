@@ -1,12 +1,35 @@
 import Peer, { type DataConnection } from 'peerjs';
 import { loadHostPeerId, saveHostPeerId } from '../store/persistence';
 
-// STUN only — deliberately NO TURN. WebRTC data channels are DTLS-encrypted end-to-end and
-// travel directly peer-to-peer; they are never relayed through a server. PeerJS's default
-// config includes shared TURN relays, so we override it: on networks that block direct P2P,
-// the connection fails (surfaced in the UI) rather than silently relaying traffic through a
-// third party. STUN only reveals a peer's public IP; it never carries payload. See ADR 0001.
-export const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
+// STUN for direct P2P, plus Open Relay Project's free public TURN as a best-effort fallback
+// for networks that block direct P2P (symmetric NAT, locked-down corporate firewalls). WebRTC
+// data channels stay DTLS-encrypted end-to-end regardless of transport — a TURN relay carries
+// ciphertext it cannot decrypt, same trust boundary as the STUN/broker handshake already
+// crosses. Fixed public credentials, no signup, no secret to manage. See ADR 0005 (amends
+// ADR 0001, which was STUN-only).
+export const ICE_SERVERS: RTCIceServer[] = [
+  { urls: 'stun:stun.relay.metered.ca:80' },
+  {
+    urls: 'turn:global.relay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:global.relay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+];
 const PEER_OPTIONS = { config: { iceServers: ICE_SERVERS } };
 
 export interface HostPeer {

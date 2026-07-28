@@ -43,12 +43,20 @@ describe('createHostPeer', () => {
     expect(p2.requestedId).toBe('RANDOM-ID');
   });
 
-  it('configures STUN-only ICE — no TURN relay', async () => {
+  it('configures STUN plus an Open Relay Project TURN fallback', async () => {
     const { ICE_SERVERS } = await import('./peer');
     const urls = ICE_SERVERS.flatMap((s) => (Array.isArray(s.urls) ? s.urls : [s.urls]));
-    expect(urls.length).toBeGreaterThan(0);
-    expect(urls.every((u) => u.startsWith('stun:'))).toBe(true);
-    expect(urls.some((u) => u.startsWith('turn:'))).toBe(false);
+    expect(urls.some((u) => u.startsWith('stun:'))).toBe(true);
+    const turnUrls = urls.filter((u) => u.startsWith('turn:') || u.startsWith('turns:'));
+    expect(turnUrls.length).toBeGreaterThan(0);
+    expect(turnUrls.every((u) => u.includes('relay.metered.ca'))).toBe(true);
+    for (const server of ICE_SERVERS) {
+      const urlList = Array.isArray(server.urls) ? server.urls : [server.urls];
+      if (urlList.some((u) => u.startsWith('turn:') || u.startsWith('turns:'))) {
+        expect(server.username).toBe('openrelayproject');
+        expect(server.credential).toBe('openrelayproject');
+      }
+    }
   });
 
   it('constructs the Peer with our iceServers (overriding PeerJS TURN defaults)', async () => {
