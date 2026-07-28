@@ -56,3 +56,22 @@ candidates fail to connect.
   eliminate it.
 - No new secret/credential management: Open Relay Project's free tier uses fixed, public
   username/credential pair, not an API key — nothing to store securely or rotate.
+
+## Update (2026-07-28): Open Relay Project's shared TURN was dead
+
+A second team member still hit the identical failure (`ice: "checking"` indefinitely) after
+this ADR shipped. A `chrome://webrtc-internals` dump showed why: every TURN Allocate to
+Open Relay Project's server returned STUN error 400 (Bad Request), on every port/transport
+variant — the shared free-tier credentials had stopped working, so no relay candidate was
+ever produced and this ADR's fallback silently did nothing for them. The colleague for whom
+this ADR "worked" had actually succeeded via direct P2P and never exercised the TURN path at
+all, which is why the dead relay went unnoticed at first.
+
+Replaced the Open Relay Project credentials with a dedicated Metered.ca TURN account
+(`turn trial global 500mb`, renews 2026-08-28) — same URLs, same fallback role, just a
+credential pair that's actually alive. This does invalidate one line above: the credential is
+no longer a fixed public secret shared by every user of the service globally, it's scoped to
+this account. It still ships in the client bundle in plaintext (same trust model as before —
+there is no backend to hide it behind, per ADR 0001) but is no longer something anyone on the
+internet was already relying on, so a scrape-and-abuse case now burns this account's quota
+specifically rather than a shared public pool.
