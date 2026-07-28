@@ -38,4 +38,3 @@ Baseline: lint exits 0 with **3** `react(only-export-components)` warnings in
   (`[border-color:var(--color-accent)]`) or don't use `Panel`.
 - **No hex outside `index.css`.** Opacity modifiers (`bg-accent/12`) resolve against the themed
   variable and stay correct in light mode; hardcoded hexes don't.
-- Manual P2P checks live in `app/SMOKE.md` — they need a human and two real peers.
