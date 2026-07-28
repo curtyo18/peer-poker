@@ -15,7 +15,7 @@ const terminalCopy = {
     tone: 'alert' as const,
     title: "Couldn't connect",
     body:
-      'This network may be blocking peer-to-peer connections (no relay server is used, by design). Try a different network or a phone hotspot.',
+      'This network may be blocking peer-to-peer connections, even with a relay as a fallback. Try a different network or a phone hotspot.',
   },
   'no-answer': {
     tone: 'neutral' as const,

@@ -1,7 +1,7 @@
 # 0001. Peer-to-peer WebRTC transport; no server ever carries payload
 
 Date: 2026-07-24
-Status: accepted
+Status: accepted (amended by 0005 — TURN relay added as a connectivity fallback)
 
 ## Context
 

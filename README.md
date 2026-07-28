@@ -5,11 +5,12 @@
 Serverless, peer-to-peer **planning poker**. A host runs a live estimation session;
 participants join from a shared link and vote with story-point cards. There is **no
 backend** — your votes, tickets, and results are exchanged **directly between the people in
-the room over WebRTC** and never touch a server.
+the room over WebRTC**, and no server ever sees them.
 
-- **No server holds your data.** Only the WebRTC connection handshake briefly involves a
-  third party (PeerJS broker + STUN) — connection metadata only, never your votes or
-  tickets. No TURN relay.
+- **No server holds your data.** The WebRTC connection handshake briefly involves a third
+  party (PeerJS broker + STUN), and — only on networks that block a direct connection — a
+  TURN relay carries traffic that stays end-to-end encrypted the whole way. None of them ever
+  see a vote or a ticket.
 - **Decks** — Fibonacci built in; create your own (numbers, T-shirt sizes, `?`, `☕`).
   Multiple named decks, remembered locally.
 - **Sessions** — pre-plan an agenda or add items ad-hoc mid-meeting. Host reveals when ready;

@@ -10,6 +10,9 @@ type Handler = (arg?: unknown) => void;
 /** Every Peer the app constructs during a test, newest last. */
 const peers: FakePeer[] = [];
 
+/** Every fake DataConnection `peer.connect()` has returned, newest last. */
+const guestConns: Array<{ peerConnection: { signalingState: string } }> = [];
+
 class FakePeer {
   id: string;
   open = false;
@@ -32,7 +35,20 @@ class FakePeer {
   emit(ev: string, arg?: unknown) {
     for (const h of [...(this.handlers.get(ev) ?? [])]) h(arg);
   }
-  connect() { return { on: vi.fn(), send: vi.fn() }; }
+  connect() {
+    const conn = {
+      open: false,
+      peerConnection: {
+        signalingState: 'have-local-offer' as string,
+        iceConnectionState: 'checking' as string,
+        iceGatheringState: 'gathering' as string,
+      },
+      on: vi.fn(),
+      send: vi.fn(),
+    };
+    guestConns.push(conn);
+    return conn;
+  }
   reconnect() { this.reconnectCalls += 1; }
   destroy() { this.destroyed = true; }
 }
@@ -62,6 +78,7 @@ const latestPeer = () => peers[peers.length - 1];
 
 beforeEach(async () => {
   peers.length = 0;
+  guestConns.length = 0;
   // A test that enters a room leaves ?room= on the jsdom URL, and the next App to mount reads it
   // as an invite link and routes to the join screen instead of the landing page.
   history.replaceState(null, '', '/');
@@ -228,5 +245,40 @@ describe('App — the host’s connection indicator', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/lost the connection to the signalling service/i);
     expect(screen.getByText('Login')).toBeInTheDocument();
+  });
+});
+
+describe('App — guest join timeout', () => {
+  beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
+  afterEach(() => vi.useRealTimers());
+
+  async function startJoin(roomCode: string) {
+    history.replaceState(null, '', `/?room=${roomCode}`);
+    await renderApp();
+    await vi.waitFor(() => expect(screen.getByText(roomCode)).toBeInTheDocument());
+    await userEvent.setup({ delay: null }).type(
+      screen.getByPlaceholderText(/your name/i),
+      'Guest',
+    );
+    await userEvent.setup({ delay: null }).click(screen.getByRole('button', { name: /join/i }));
+    await vi.waitFor(() => expect(latestPeer()).toBeDefined());
+    latestPeer().emit('open', 'GUEST-PEER-ID');
+    await vi.waitFor(() => expect(guestConns.length).toBeGreaterThan(0));
+    return guestConns[guestConns.length - 1];
+  }
+
+  it('shows "room didn\'t answer" when no SDP answer ever arrives', async () => {
+    await startJoin('NEWROOM1');
+    const { GUEST_CONNECT_TIMEOUT_MS } = await import('./App');
+    vi.advanceTimersByTime(GUEST_CONNECT_TIMEOUT_MS);
+    expect(await screen.findByText(/room didn.t answer/i)).toBeInTheDocument();
+  });
+
+  it('shows "couldn\'t connect" when ICE hangs after an SDP answer arrives', async () => {
+    const conn = await startJoin('NEWROOM2');
+    conn.peerConnection.signalingState = 'stable';
+    const { GUEST_CONNECT_TIMEOUT_MS } = await import('./App');
+    vi.advanceTimersByTime(GUEST_CONNECT_TIMEOUT_MS);
+    expect(await screen.findByText(/couldn.t connect/i)).toBeInTheDocument();
   });
 });

@@ -39,7 +39,7 @@ type Terminal = 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' |
 // out. 'broker-unreachable' is the peer never opening at all.
 type HostError = 'name-taken' | 'resume-id-taken' | 'broker-unreachable' | null;
 
-const GUEST_CONNECT_TIMEOUT_MS = 15000;
+export const GUEST_CONNECT_TIMEOUT_MS = 15000;
 
 function App() {
   const [mode, setMode] = useState<Mode>('landing');
@@ -330,10 +330,12 @@ function App() {
     });
     setMode('guest');
     connectTimeoutRef.current = setTimeout(() => {
-      // Nothing errored, the room just never answered — a different failure from a refused
-      // or impossible connection, and it points at the host rather than at this device.
       if (useSession.getState().state === null) {
         const pc = conn?.peerConnection as RTCPeerConnection | undefined;
+        // 'stable' means an SDP answer was received — the host's tab is alive and responded —
+        // so a still-closed data channel at this point is an ICE/NAT failure, not a host that
+        // never answered. Anything short of 'stable' means no answer ever arrived at all.
+        const gotAnswer = pc?.signalingState === 'stable';
         console.error('[peerpoker] join timed out with no error', {
           roomCode,
           dialled: conn !== null,
@@ -342,7 +344,7 @@ function App() {
           iceGathering: pc?.iceGatheringState,
           signaling: pc?.signalingState,
         });
-        setTerminal('no-answer');
+        setTerminal(gotAnswer ? 'unreachable' : 'no-answer');
       }
     }, GUEST_CONNECT_TIMEOUT_MS);
 
