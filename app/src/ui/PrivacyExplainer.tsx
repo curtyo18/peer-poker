@@ -17,7 +17,7 @@ const questions = [
   {
     icon: '📡',
     q: 'Does anything touch a server at all?',
-    a: 'Only the introduction. Two browsers can’t find each other on their own, so a matchmaking service passes along “here’s where to reach me”, and a second one (Google’s) helps each browser work out its own address from behind a router. Both are used just while you connect, and both see only network details — never a name, a card, or a word of what you’re estimating. All of that goes straight between you.',
+    a: 'Mostly just the introduction. Two browsers can’t find each other on their own, so a matchmaking service passes along “here’s where to reach me”, and a second one (Google’s) helps each browser work out its own address from behind a router. Both are used just while you connect, and both see only network details — never a name, a card, or a word of what you’re estimating. If your network blocks a direct connection, one more service relays the encrypted traffic itself — it still can’t read any of it, it’s only moving locked bytes it can’t open.',
   },
   {
     icon: '🂠',
