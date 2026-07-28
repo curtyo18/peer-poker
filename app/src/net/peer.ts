@@ -1,34 +1,41 @@
 import Peer, { type DataConnection } from 'peerjs';
 import { loadHostPeerId, saveHostPeerId } from '../store/persistence';
 
-// STUN for direct P2P, plus Open Relay Project's free public TURN as a best-effort fallback
-// for networks that block direct P2P (symmetric NAT, locked-down corporate firewalls). WebRTC
-// data channels stay DTLS-encrypted end-to-end regardless of transport — a TURN relay carries
+// STUN for direct P2P, plus a Metered.ca TURN account as a best-effort fallback for networks
+// that block direct P2P (symmetric NAT, CGNAT, locked-down corporate firewalls). WebRTC data
+// channels stay DTLS-encrypted end-to-end regardless of transport — a TURN relay carries
 // ciphertext it cannot decrypt, same trust boundary as the STUN/broker handshake already
-// crosses. Fixed public credentials, no signup, no secret to manage. See ADR 0005 (amends
-// ADR 0001, which was STUN-only).
+// crosses. See ADR 0005 (amends ADR 0001, which was STUN-only).
+//
+// Replaces Open Relay Project's shared free demo creds (openrelayproject/openrelayproject):
+// that TURN server was rejecting every Allocate with STUN error 400 (dead/exhausted shared
+// quota), so guests behind NATs that can't hole-punch direct STUN pairs had no fallback at
+// all — see the 2026-07-28 join-timeout investigation. This is a scoped account's own TURN
+// credential, not a public secret; it will sit in the client bundle same as the old one did.
+const TURN_USERNAME = '5e65462698aa8225b40546fa';
+const TURN_CREDENTIAL = 'ZY0vTPQefOQPWrCC';
 export const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun.relay.metered.ca:80' },
   {
     urls: 'turn:global.relay.metered.ca:80',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
+    username: TURN_USERNAME,
+    credential: TURN_CREDENTIAL,
   },
   {
     urls: 'turn:global.relay.metered.ca:80?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
+    username: TURN_USERNAME,
+    credential: TURN_CREDENTIAL,
   },
   {
     urls: 'turn:global.relay.metered.ca:443',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
+    username: TURN_USERNAME,
+    credential: TURN_CREDENTIAL,
   },
   {
     urls: 'turns:global.relay.metered.ca:443?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
+    username: TURN_USERNAME,
+    credential: TURN_CREDENTIAL,
   },
 ];
 const PEER_OPTIONS = { config: { iceServers: ICE_SERVERS } };
