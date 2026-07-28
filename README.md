@@ -36,8 +36,7 @@ npm run dev     # http://localhost:8000/peer-poker/
 ## Status
 
 Early build. Design in [`docs/design.md`](docs/design.md), implementation plan in
-[`docs/plan.md`](docs/plan.md), key decisions in [`docs/adr/`](docs/adr/). The manual
-two-browser pass that the automated suite cannot cover is in [`app/SMOKE.md`](app/SMOKE.md).
+[`docs/plan.md`](docs/plan.md), key decisions in [`docs/adr/`](docs/adr/).
 
 ## Stack
 
