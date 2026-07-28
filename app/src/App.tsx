@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { DataConnection } from 'peerjs';
 import QRCode from 'qrcode';
 import { AppHeader } from './ui/AppHeader';
+import { Footer } from './ui/Footer';
 import { Landing } from './ui/Landing';
 import { JoinScreen } from './ui/JoinScreen';
 import { ResumeScreen } from './ui/ResumeScreen';
@@ -521,6 +522,7 @@ function App() {
           onLeave={handleLeave}
         />
       )}
+      <Footer />
     </>
   );
 }
