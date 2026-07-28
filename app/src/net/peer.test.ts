@@ -46,7 +46,7 @@ describe('createHostPeer', () => {
   it('configures STUN plus an Open Relay Project TURN fallback', async () => {
     const { ICE_SERVERS } = await import('./peer');
     const urls = ICE_SERVERS.flatMap((s) => (Array.isArray(s.urls) ? s.urls : [s.urls]));
-    expect(urls.some((u) => u.startsWith('stun:'))).toBe(true);
+    expect(urls).toContain('stun:stun.l.google.com:19302');
     const turnUrls = urls.filter((u) => u.startsWith('turn:') || u.startsWith('turns:'));
     expect(turnUrls.length).toBeGreaterThan(0);
     expect(turnUrls.every((u) => u.includes('relay.metered.ca'))).toBe(true);

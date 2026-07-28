@@ -8,6 +8,7 @@ import { loadHostPeerId, saveHostPeerId } from '../store/persistence';
 // crosses. Fixed public credentials, no signup, no secret to manage. See ADR 0005 (amends
 // ADR 0001, which was STUN-only).
 export const ICE_SERVERS: RTCIceServer[] = [
+  { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun.relay.metered.ca:80' },
   {
     urls: 'turn:global.relay.metered.ca:80',
