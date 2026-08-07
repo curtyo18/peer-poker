@@ -195,10 +195,11 @@ export function RevealStage(props: RevealStageProps) {
                   </div>
                   <div className="font-display text-[40px] leading-tight text-fg">{stats.majority}</div>
                   <p className="mx-auto max-w-[440px] text-[13px] text-fg-2">
-                    {stats.counts[stats.majority]} of {Object.keys(item.votes).length} played{' '}
-                    {stats.majority}
+                    {stats.counts[stats.majority]} of {stats.total} played {stats.majority}
+                    {/* The spread is over every card played, the majority's included — saying
+                        "the rest run 1 to 2" would be describing a range they are inside. */}
                     {stats.min !== null && stats.max !== null && stats.min !== stats.max
-                      ? `, with the rest between ${stats.min} and ${stats.max}. `
+                      ? `, and estimates run ${stats.min} to ${stats.max}. `
                       : '. '}
                     Accept it, or hear the others out first.
                   </p>
