@@ -18,6 +18,13 @@ export const TSHIRT: Deck = {
   values: ['XS', 'S', 'M', 'L', 'XL', '?', '☕'],
 };
 
+/**
+ * Cards that decline to estimate rather than naming one. Both built-in decks carry them, and a
+ * custom deck conventionally does too. They still count towards the table — a room where half
+ * the players shrugged has not agreed on anything — but they can never *be* the answer.
+ */
+export const NON_ESTIMATE_CARDS: ReadonlySet<CardValue> = new Set(['?', '☕']);
+
 /** The decks the app ships with, in the order they appear in the picker. */
 export const BUILTIN_DECKS: Deck[] = [FIBONACCI, TSHIRT];
 

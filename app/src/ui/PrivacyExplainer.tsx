@@ -59,7 +59,8 @@ export function PrivacyExplainer() {
               What we hide, and when
             </DisplayHeading>
             <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-              PeerPoker is built so estimates can&rsquo;t be anchored. Here&rsquo;s exactly how the
+              PeerPoker is built so estimates can&rsquo;t be anchored: your browser talks directly,
+              peer to peer, with everyone else at the table. Here&rsquo;s exactly how the
               hidden-until-reveal guarantee works.
             </p>
           </div>

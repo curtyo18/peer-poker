@@ -41,7 +41,7 @@ export function ShareBar({ shareLink, qrDataUrl }: ShareBarProps) {
       <div className={shareRowClass}>
         <span className="max-w-[220px] truncate font-mono text-xs text-muted">{shareLink}</span>
         <Button variant="primary" size="sm" onClick={handleCopyLink}>
-          Copy link
+          ⧉ Copy invite link
         </Button>
         {qrDataUrl && (
           <Button
