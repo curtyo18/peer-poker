@@ -70,7 +70,11 @@ export function Histogram({ deck, counts, mode, outlier }: HistogramProps) {
         {deck.map((v) => (
           <span
             key={v}
-            className={`flex-1 text-center text-[11px] ${mode.includes(v) ? 'text-accent' : 'text-muted-2'}`}
+            // min-w-0: a flex item floors at min-content by default, and a label with no break
+            // opportunity ('0.5') is wider than its column on a phone. The bars above hold no
+            // text and shrink freely, so without this the axis outgrows the bar row and every
+            // label drifts off the bar it names.
+            className={`min-w-0 flex-1 text-center text-[11px] ${mode.includes(v) ? 'text-accent' : 'text-muted-2'}`}
           >
             {v}
           </span>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BUILTIN_DECKS, FIBONACCI, TSHIRT, isBuiltinDeck, seedDecks, validateDeck, newDeck } from './decks';
+import { BUILTIN_DECKS, DAYS, FIBONACCI, TSHIRT, isBuiltinDeck, seedDecks, validateDeck, newDeck } from './decks';
 
 describe('decks', () => {
   it('provides a Fibonacci built-in deck', () => {
@@ -10,6 +10,11 @@ describe('decks', () => {
   it('provides a T-shirt built-in deck', () => {
     expect(TSHIRT.id).toBe('builtin-tshirt');
     expect(TSHIRT.values).toEqual(['XS', 'S', 'M', 'L', 'XL', '?', '☕']);
+  });
+
+  it('provides a Days built-in deck', () => {
+    expect(DAYS.id).toBe('builtin-days');
+    expect(DAYS.values).toEqual(['0', '0.5', '1', '1.5', '2', '3', '4', '5', '8', '13', '?', '☕']);
   });
 
   it('seeds every built-in when storage is empty', () => {
@@ -38,6 +43,7 @@ describe('decks', () => {
     const mine = newDeck('Mine', ['1', '2']);
     const seeded = seedDecks([FIBONACCI, mine]);
     expect(seeded).toContainEqual(TSHIRT);
+    expect(seeded).toContainEqual(DAYS);
     expect(seeded).toContainEqual(mine);
     expect(seeded.filter((d) => d.id === FIBONACCI.id)).toHaveLength(1);
   });
@@ -57,6 +63,7 @@ describe('decks', () => {
   it('knows a built-in from a deck the user made', () => {
     expect(isBuiltinDeck(FIBONACCI.id)).toBe(true);
     expect(isBuiltinDeck(TSHIRT.id)).toBe(true);
+    expect(isBuiltinDeck(DAYS.id)).toBe(true);
     expect(isBuiltinDeck(newDeck('Mine', ['1']).id)).toBe(false);
   });
 

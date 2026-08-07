@@ -19,14 +19,25 @@ export const TSHIRT: Deck = {
 };
 
 /**
- * Cards that decline to estimate rather than naming one. Both built-in decks carry them, and a
+ * Calendar days rather than abstract points, for teams that estimate in elapsed time. Fine-grained
+ * at the short end where half a day is a real distinction, and spaced out past a week where the
+ * difference between 8 and 13 days is guesswork either way.
+ */
+export const DAYS: Deck = {
+  id: 'builtin-days',
+  name: 'Days',
+  values: ['0', '0.5', '1', '1.5', '2', '3', '4', '5', '8', '13', '?', '☕'],
+};
+
+/**
+ * Cards that decline to estimate rather than naming one. Every built-in deck carries them, and a
  * custom deck conventionally does too. They still count towards the table — a room where half
  * the players shrugged has not agreed on anything — but they can never *be* the answer.
  */
 export const NON_ESTIMATE_CARDS: ReadonlySet<CardValue> = new Set(['?', '☕']);
 
 /** The decks the app ships with, in the order they appear in the picker. */
-export const BUILTIN_DECKS: Deck[] = [FIBONACCI, TSHIRT];
+export const BUILTIN_DECKS: Deck[] = [FIBONACCI, TSHIRT, DAYS];
 
 const BUILTIN_IDS = new Set(BUILTIN_DECKS.map((d) => d.id));
 

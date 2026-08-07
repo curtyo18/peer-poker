@@ -2,6 +2,14 @@ import { useState } from 'react';
 import type { CardValue, Deck } from '../domain/types';
 import { PlayingCard } from './PlayingCard';
 
+// The fan's geometry, in the units it was tuned in: 40px between neighbouring cards over a
+// half-span of 200px, and 45px of droop on the outermost card. The 11-card Fibonacci deck sits
+// exactly at both limits, which is what the `pb-8`/`h-[130px]` box and the 0.72 mobile scale
+// were sized against.
+const SPREAD_PX = 40;
+const FAN_HALF_SPAN_PX = 200;
+const FAN_DROOP_PX = 45;
+
 interface CardHandProps {
   deck: Deck;
   myVote: CardValue | undefined;
@@ -13,6 +21,12 @@ export function CardHand({ deck, myVote, disabled, onVote }: CardHandProps) {
   const [hovered, setHovered] = useState<string | null>(null);
   const n = deck.values.length;
   const center = (n - 1) / 2;
+  // Rotation already normalises by `center` so the arc spans the same 60° at any deck size; the
+  // spread and the droop have to do the same or a deck wider than Fibonacci's 11 grows the fan
+  // past the panel (and past a 375px viewport) instead of packing into it. Capped at 40px so
+  // decks at or under 11 cards keep the exact geometry these numbers were tuned for.
+  const spread = center === 0 ? 0 : Math.min(SPREAD_PX, FAN_HALF_SPAN_PX * 2 / (n - 1));
+  const droop = center === 0 ? 0 : FAN_DROOP_PX / center ** 2;
 
   return (
     // pb-14 reserves room for the fanned cards' downward droop (bottom-anchored + positive
@@ -27,8 +41,8 @@ export function CardHand({ deck, myVote, disabled, onVote }: CardHandProps) {
           const lifted = !disabled && !selected && hovered === value;
 
           const rotate = selected ? 0 : offset * (center === 0 ? 0 : 30 / center);
-          const tx = offset * 40;
-          const restY = offset ** 2 * 1.8;
+          const tx = offset * spread;
+          const restY = offset ** 2 * droop;
           const ty = selected ? -16 : lifted ? restY - 18 : restY;
 
           return (
