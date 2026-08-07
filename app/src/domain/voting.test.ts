@@ -115,6 +115,14 @@ describe('suggestedValue', () => {
   it('falls back to the mode when no card in it is numeric', () => {
     expect(suggestedValue({ a: '?', b: '?' })).toBe('?');
   });
+
+  // The Days deck spells its half steps as decimals rather than '½'/'1½', because the vulgar
+  // fraction table only covers bare glyphs and '1½' would parse as NaN. Guard that they take
+  // part in the numeric reads the same way the glyph does.
+  it('breaks a tie down onto a decimal half step', () => {
+    expect(suggestedValue({ a: '1.5', b: '2' })).toBe('1.5');
+    expect(suggestedValue({ a: '0.5', b: '1' })).toBe('0.5');
+  });
 });
 
 describe('outlierValue', () => {
