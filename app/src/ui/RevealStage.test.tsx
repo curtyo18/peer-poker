@@ -56,6 +56,24 @@ const guestProps = (overrides: Overrides = {}) => ({
 });
 
 describe('RevealStage', () => {
+  it('calls a table with a card past the halfway mark a majority, not a split', () => {
+    render(<RevealStage {...hostProps({ votes: { a: '2', b: '2', c: '2', d: '1', e: '1' } })} />);
+    expect(screen.getByText(/Majority/)).toBeInTheDocument();
+    expect(screen.queryByText(/Split table/)).not.toBeInTheDocument();
+    expect(screen.getByText(/3 of 5 played/)).toBeInTheDocument();
+  });
+
+  it('still calls a table with no card past halfway a split', () => {
+    const votes = { a: '2', b: '2', c: '2', d: '2', e: '1', f: '1', g: '1', h: '3', i: '3' };
+    render(<RevealStage {...hostProps({ votes })} />);
+    expect(screen.getByText(/Split table/)).toBeInTheDocument();
+  });
+
+  it('reports a ½-to-1 spread with the half card, not as 1 to 1', () => {
+    render(<RevealStage {...hostProps({ votes: { a: '½', b: '1', c: '2' } })} />);
+    expect(screen.getByText(/Estimates run ½ to 2/)).toBeInTheDocument();
+  });
+
   it('preselects the suggested value in the accept dropdown', () => {
     render(<RevealStage {...hostProps({ votes: { p1: '5', p2: '5', p3: '8' } })} />);
     expect(screen.getByLabelText(/accept/i)).toHaveValue('5');

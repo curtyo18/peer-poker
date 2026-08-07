@@ -157,7 +157,9 @@ export function RevealStage(props: RevealStageProps) {
                 ? 'border border-border bg-surface-2'
                 : stats.consensus
                   ? 'border border-ready-border bg-ready/10'
-                  : 'border border-verdict-border bg-verdict-bg'
+                  : stats.majority !== null
+                    ? 'border border-accent/35 bg-accent/12'
+                    : 'border border-verdict-border bg-verdict-bg'
             }`}
           >
             {stats.consensus && <Confetti />}
@@ -181,6 +183,24 @@ export function RevealStage(props: RevealStageProps) {
                   <div className="font-display text-[40px] leading-tight text-fg">{stats.mode[0] ?? '—'}</div>
                   <p className="mx-auto max-w-[440px] text-[13px] text-fg-2">
                     Everyone landed on the same card. Accept it and move on.
+                  </p>
+                </>
+              ) : stats.majority !== null ? (
+                /* Not unanimous, but one card is ahead of every other and holds more than half
+                   the table. That is a decision the room has already made — reading it back as
+                   "split, discuss" sends them into a debate they are not actually having. */
+                <>
+                  <div className="text-[11px] font-bold uppercase tracking-[.16em] text-accent-soft">
+                    Majority &mdash; most of the table agrees
+                  </div>
+                  <div className="font-display text-[40px] leading-tight text-fg">{stats.majority}</div>
+                  <p className="mx-auto max-w-[440px] text-[13px] text-fg-2">
+                    {stats.counts[stats.majority]} of {Object.keys(item.votes).length} played{' '}
+                    {stats.majority}
+                    {stats.min !== null && stats.max !== null && stats.min !== stats.max
+                      ? `, with the rest between ${stats.min} and ${stats.max}. `
+                      : '. '}
+                    Accept it, or hear the others out first.
                   </p>
                 </>
               ) : (

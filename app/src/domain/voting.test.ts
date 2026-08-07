@@ -23,6 +23,32 @@ describe('voteStats', () => {
     expect(s.max).toBe('5');
   });
 
+  // `Number('½')` is NaN, so the half-point card used to be dropped from min/max entirely and a
+  // ½-to-1 table reported "estimates run 1 to 1".
+  it('reads the half card as a number and reports it as it is printed', () => {
+    const s = voteStats({ a: '½', b: '½', c: '1' });
+    expect(s.min).toBe('½');
+    expect(s.max).toBe('1');
+  });
+
+  it('reads a custom deck’s 1/2 the same way', () => {
+    expect(voteStats({ a: '1/2', b: '2' }).min).toBe('1/2');
+  });
+
+  it('flags a majority when one card holds more than half the table', () => {
+    expect(voteStats({ a: '2', b: '2', c: '2', d: '1', e: '1' }).majority).toBe('2');
+  });
+
+  it('is not a majority when the leader is short of half', () => {
+    // 4-3-2: '2' leads but most of the table played something else.
+    const votes = { a: '2', b: '2', c: '2', d: '2', e: '1', f: '1', g: '1', h: '3', i: '3' };
+    expect(voteStats(votes).majority).toBeNull();
+  });
+
+  it('is not a majority when two cards tie for the lead', () => {
+    expect(voteStats({ a: '2', b: '2', c: '1', d: '1' }).majority).toBeNull();
+  });
+
   it('handles no votes', () => {
     const s = voteStats({});
     expect(s.mode).toEqual([]);

@@ -6,11 +6,29 @@ export interface VoteStats {
   min: CardValue | null;
   max: CardValue | null;
   consensus: boolean;
+  /** One card holding a strict outright majority of the votes cast, or null. */
+  majority: CardValue | null;
 }
 
+// The vulgar fractions a deck can plausibly hold. `Number('½')` is NaN, so the shipped Fibonacci
+// deck's half-point card was silently dropped from every numeric read — a table split ½-to-1
+// reported its estimates as running "1 to 1".
+const FRACTION_GLYPHS: Record<string, number> = {
+  '½': 0.5, '⅓': 1 / 3, '⅔': 2 / 3, '¼': 0.25, '¾': 0.75,
+};
+
 const asNumber = (v: CardValue): number | null => {
-  const n = Number(v);
-  return Number.isFinite(n) && v.trim() !== '' ? n : null;
+  const trimmed = v.trim();
+  if (trimmed === '') return null;
+  if (trimmed in FRACTION_GLYPHS) return FRACTION_GLYPHS[trimmed];
+  // A custom deck is as likely to spell the same card '1/2'.
+  const fraction = /^(\d+)\s*\/\s*(\d+)$/.exec(trimmed);
+  if (fraction) {
+    const denominator = Number(fraction[2]);
+    return denominator === 0 ? null : Number(fraction[1]) / denominator;
+  }
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
 };
 
 export function voteStats(votes: Record<string, CardValue>): VoteStats {
@@ -21,12 +39,20 @@ export function voteStats(votes: Record<string, CardValue>): VoteStats {
   const maxCount = Math.max(0, ...Object.values(counts));
   const mode = Object.keys(counts).filter((k) => counts[k] === maxCount);
 
-  const numeric = values.map(asNumber).filter((n): n is number => n !== null);
-  const min = numeric.length ? String(Math.min(...numeric)) : null;
-  const max = numeric.length ? String(Math.max(...numeric)) : null;
+  // The card as it was printed, not the number it parsed to: the low end of a ½-to-1 spread
+  // reads "½" on the deck and has to read "½" in the verdict.
+  const numeric = values
+    .map((v) => ({ v, n: asNumber(v) }))
+    .filter((m): m is { v: CardValue; n: number } => m.n !== null);
+  const min = numeric.length ? numeric.reduce((lo, m) => (m.n < lo.n ? m : lo)).v : null;
+  const max = numeric.length ? numeric.reduce((hi, m) => (m.n > hi.n ? m : hi)).v : null;
 
   const consensus = values.length > 0 && new Set(values).size === 1;
-  return { counts, mode: values.length ? mode : [], min, max, consensus };
+  // Strict: one card ahead of every other, holding more than half the cards played. A table of
+  // 5×'2' and 4×'1' has landed somewhere and only needs a nod; 4/3/2 across three cards has not,
+  // and calling that a majority would talk a genuinely split table out of its discussion.
+  const majority = mode.length === 1 && maxCount * 2 > values.length ? mode[0] : null;
+  return { counts, mode: values.length ? mode : [], min, max, consensus, majority };
 }
 
 // The number the table is nudged towards: the most-voted value, and on a tie the lower of them —
