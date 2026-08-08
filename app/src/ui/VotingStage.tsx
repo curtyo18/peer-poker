@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AgendaItem, CardValue, SessionState } from '../domain/types';
+import { playNudgeChime } from '../audio/sound';
 import { getGuest } from '../net/live';
 import { reveal, skipItem } from '../domain/hostActions';
 import { CardHand } from './CardHand';
@@ -39,6 +40,13 @@ export function VotingStage(props: VotingStageProps) {
   const { state, item, myPeerId, onVote } = props;
   const nudgeSignal = props.role === 'guest' ? props.nudgeSignal : 0;
 
+  // Hoisted above the hooks because the chime effect below needs them: a nudge is addressed to
+  // guests who still owe a card, and playing it at anyone else means an observer — or the player
+  // who voted first — gets a noise about somebody else's turn.
+  const me = state.participants.find((p) => p.peerId === myPeerId);
+  const myVote = myPeerId ? item.votes[myPeerId] : undefined;
+  const owesACard = props.role === 'guest' && me?.role === 'voter' && myVote === undefined;
+
   // How many players the last nudge went out to, while the confirmation is up.
   const [nudgeSentTo, setNudgeSentTo] = useState<number | null>(null);
   const [nudged, setNudged] = useState(false);
@@ -49,14 +57,33 @@ export function VotingStage(props: VotingStageProps) {
     return () => clearTimeout(timer);
   }, [nudgeSentTo]);
 
-  // Keyed on the signal alone, so a later round cannot resurrect an old nudge. Whether it
-  // applies to *this* player is decided at render, which means playing a card dismisses it.
+  // Both refs start at the signal this mount was born with, and that initial value is the whole
+  // point of them. `nudgeSignal` is a session-long counter living in App, but this component is
+  // unmounted and rebuilt on every reveal — RoomView swaps in RevealStage and back. A ref seeded
+  // at 0 therefore reads a months-old "1" as brand new, so one nudge on the first agenda item
+  // reappeared, and chimed, at the top of every item after it. A remount is not a nudge.
+  const promptedFor = useRef(nudgeSignal);
+  const chimedFor = useRef(nudgeSignal);
+
+  // Whether the prompt applies to *this* player is decided at render, which means playing a card
+  // dismisses it.
   useEffect(() => {
-    if (nudgeSignal === 0) return;
+    if (nudgeSignal === promptedFor.current) return;
+    promptedFor.current = nudgeSignal;
     setNudged(true);
     const timer = setTimeout(() => setNudged(false), NUDGE_PROMPT_MS);
     return () => clearTimeout(timer);
   }, [nudgeSignal]);
+
+  // `owesACard` is a dependency because the chime has to read it as it stands when the nudge
+  // lands, not as it stood on some earlier render — but it also changes the moment the player
+  // votes, which would otherwise re-run this and chime at someone who just complied. Hence a
+  // second ref rather than sharing one: this effect runs on more than the signal changing.
+  useEffect(() => {
+    if (nudgeSignal === chimedFor.current) return;
+    chimedFor.current = nudgeSignal;
+    if (owesACard) playNudgeChime();
+  }, [nudgeSignal, owesACard]);
 
   // A kick or an ended session closes this guest's connection before the host broadcasts
   // the roster without them, so `state` still seats them and every control below would
@@ -67,10 +94,8 @@ export function VotingStage(props: VotingStageProps) {
     return <DeadRoom terminal={props.terminal} onLeave={props.onLeave} />;
   }
 
-  const me = state.participants.find((p) => p.peerId === myPeerId);
   const voters = state.participants.filter((p) => p.role === 'voter');
   const votedCount = voters.filter((p) => item.votes[p.peerId] !== undefined).length;
-  const myVote = myPeerId ? item.votes[myPeerId] : undefined;
   const stillDeciding = voters.length - votedCount;
 
   // Three seats, not two: a host who chose not to play is never seated at all, and a kicked guest
@@ -92,7 +117,14 @@ export function VotingStage(props: VotingStageProps) {
 
   // A nudge is addressed to people who still owe a card. An observer does not, and neither does
   // anyone who has already played — so for them nothing is shown at all.
-  const showNudgePrompt = props.role === 'guest' && nudged && seat === 'voter' && myVote === undefined;
+  const showNudgePrompt = nudged && owesACard;
+
+  // Alternating suffix, so a second nudge lands on a different `animation-name` than the first and
+  // the browser restarts the animation instead of ignoring it. See the -a/-b pairs in index.css
+  // for why this rather than a React `key`.
+  const beat = nudgeSignal % 2 === 0 ? 'a' : 'b';
+  const nudgeAnimation = (name: string, timing: string) =>
+    showNudgePrompt ? { animation: `${name}-${beat} ${timing}` } : undefined;
 
   return (
     <main className="mx-auto max-w-[760px] px-[26px] pt-6 pb-20" style={{ animation: 'var(--animate-ppfade)' }}>
@@ -208,24 +240,44 @@ export function VotingStage(props: VotingStageProps) {
           )}
         </Panel>
 
-        {/* Announced, not just animated: a screen-reader user gets nothing from a border. */}
-        {showNudgePrompt && (
-          <div
-            role="status"
-            className="rounded-[10px] border border-accent/35 bg-accent/12 px-3.5 py-2.5 text-center text-[13px] text-accent-soft"
-            style={{ animation: 'var(--animate-ppfade)' }}
-          >
-            <span aria-hidden="true">👋 </span>
-            The host is waiting on your estimate.
+        {/* The live region is the element, not its contents: a `role="status"` that enters the DOM
+            already holding its text is unreliably announced, because screen readers watch regions
+            they were already tracking. This wrapper is always mounted and empty until there is
+            something to say, which is the shape they do announce. Announced at all because a
+            border and a wobble are nothing to a screen-reader user.
+
+            Guests only: a host is never nudged, and a second empty live region on their screen
+            would sit alongside the "Nudge sent" one competing for the same announcements. */}
+        {props.role === 'guest' && (
+          <div role="status" aria-live="polite" className={showNudgePrompt ? '' : 'sr-only'}>
+            {showNudgePrompt && (
+              <div
+                // Safe to key: unlike the panel below, nothing in here can hold focus.
+                key={nudgeSignal}
+                className="rounded-[10px] border border-accent/35 bg-accent/12 px-3.5 py-2.5 text-center text-[13px] text-accent-soft"
+                style={{ animation: 'ppnudge-bounce 0.5s ease-out' }}
+              >
+                <span aria-hidden="true">👋 </span>
+                The host is waiting on your estimate.
+              </div>
+            )}
           </div>
         )}
 
         {seat === 'voter' && (
           // An arbitrary property, not a `border-accent` utility: panelClass already sets
           // `border-border` and Tailwind emits it after, so an appended class silently loses.
-          <Panel className={showNudgePrompt ? '[border-color:var(--color-accent)]' : ''}>
+          <Panel
+            className={showNudgePrompt ? '[border-color:var(--color-accent)]' : ''}
+            style={nudgeAnimation('ppnudge-pulse', '0.9s ease-out')}
+          >
             <Kicker className="mb-3 block text-center">Your vote</Kicker>
-            <CardHand deck={state.deck} myVote={myVote} disabled={state.revealed} onVote={onVote} />
+            {/* The shake is on a wrapper, not the Panel, so the panel's border and its pulse ring
+                hold still while the cards move — a box that shakes with its own ring reads as a
+                rendering glitch rather than as someone tapping you on the shoulder. */}
+            <div style={nudgeAnimation('ppnudge-shake', '0.45s ease-in-out')}>
+              <CardHand deck={state.deck} myVote={myVote} disabled={state.revealed} onVote={onVote} />
+            </div>
           </Panel>
         )}
 
