@@ -1,4 +1,5 @@
 import { PrivacyExplainer } from './PrivacyExplainer';
+import { SoundToggle } from './SoundToggle';
 import { ThemeToggle } from './ThemeToggle';
 import { Mono, StatusDot } from './primitives';
 
@@ -40,6 +41,7 @@ export function AppHeader({ roomCode, connected = true, onHome }: AppHeaderProps
           </div>
         )}
         <PrivacyExplainer />
+        <SoundToggle />
         <ThemeToggle />
       </div>
     </header>

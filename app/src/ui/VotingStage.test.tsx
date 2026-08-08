@@ -1,10 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CardValue, SessionState, Participant, AgendaItem } from '../domain/types';
 import { FIBONACCI } from '../domain/decks';
 import { reveal, skipItem } from '../domain/hostActions';
+import { playNudgeChime } from '../audio/sound';
 import { VotingStage } from './VotingStage';
+
+vi.mock('../audio/sound', () => ({ playNudgeChime: vi.fn() }));
 
 interface Overrides {
   votes?: Record<string, CardValue>;
@@ -55,6 +58,20 @@ const guestProps = (overrides: Overrides = {}) => ({
   nudgeSignal: overrides.nudgeSignal ?? 0,
   onLeave: vi.fn(),
 });
+
+/**
+ * Deliver a nudge the way the app does: as the counter *changing* under a stage that is already
+ * mounted and waiting.
+ *
+ * Mounting straight at `nudgeSignal: 1` is not the same thing and no longer stands in for it — a
+ * fresh mount deliberately treats whatever signal it is born with as already spent, because the
+ * stage is torn down and rebuilt on every reveal while the counter runs for the whole session.
+ */
+function nudgeGuest(overrides: Overrides = {}, signal = 1) {
+  const view = render(<VotingStage {...guestProps({ ...overrides, nudgeSignal: 0 })} />);
+  view.rerender(<VotingStage {...guestProps({ ...overrides, nudgeSignal: signal })} />);
+  return view;
+}
 
 describe('VotingStage', () => {
   it('gives the host reveal and skip controls', () => {
@@ -223,36 +240,140 @@ describe('VotingStage — nudging the people who have not voted', () => {
   });
 
   it('prompts a guest who still owes a card', () => {
-    render(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 1 })} />);
+    nudgeGuest({ votes: {}, myPeerId: 'p2' });
     const prompt = screen.getByText(/the host is waiting on your estimate/i);
     expect(prompt).toBeInTheDocument();
     expect(prompt.closest('[role="status"]')).not.toBeNull();
   });
 
   it('is ignored by a guest who has already played', () => {
-    render(<VotingStage {...guestProps({ votes: { p1: '5' }, myPeerId: 'p1', nudgeSignal: 1 })} />);
+    nudgeGuest({ votes: { p1: '5' }, myPeerId: 'p1' });
     expect(screen.queryByText(/waiting on your estimate/i)).not.toBeInTheDocument();
   });
 
   it('is ignored by an observer', () => {
-    render(
-      <VotingStage
-        {...guestProps({
-          votes: {},
-          myPeerId: 'p2',
-          nudgeSignal: 1,
-          participants: [
-            { peerId: 'p1', name: 'Ana', role: 'voter', connected: true },
-            { peerId: 'p2', name: 'Ben', role: 'observer', connected: true },
-          ],
-        })}
-      />,
-    );
+    nudgeGuest({
+      votes: {},
+      myPeerId: 'p2',
+      participants: [
+        { peerId: 'p1', name: 'Ana', role: 'voter', connected: true },
+        { peerId: 'p2', name: 'Ben', role: 'observer', connected: true },
+      ],
+    });
     expect(screen.queryByText(/waiting on your estimate/i)).not.toBeInTheDocument();
   });
 
   it('shows no prompt to a guest nobody has nudged', () => {
     render(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2' })} />);
     expect(screen.queryByText(/waiting on your estimate/i)).not.toBeInTheDocument();
+  });
+});
+
+// The chime is addressed to exactly the same people as the banner. Whether it is audible at all is
+// the sound module's business (see audio/sound.test.ts); what matters here is who it fires for.
+describe('VotingStage nudge chime', () => {
+  beforeEach(() => {
+    vi.mocked(playNudgeChime).mockClear();
+  });
+
+  it('sounds for a guest who still owes a card', () => {
+    nudgeGuest({ votes: {}, myPeerId: 'p2' });
+    expect(playNudgeChime).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays quiet for a guest who has already played', () => {
+    nudgeGuest({ votes: { p1: '5' }, myPeerId: 'p1' });
+    expect(playNudgeChime).not.toHaveBeenCalled();
+  });
+
+  it('stays quiet for an observer', () => {
+    nudgeGuest({
+      votes: {},
+      myPeerId: 'p2',
+      participants: [
+        { peerId: 'p1', name: 'Ana', role: 'voter', connected: true },
+        { peerId: 'p2', name: 'Ben', role: 'observer', connected: true },
+      ],
+    });
+    expect(playNudgeChime).not.toHaveBeenCalled();
+  });
+
+  it('stays quiet for the host, who is the one doing the nudging', () => {
+    render(<VotingStage {...hostProps({ votes: {}, myPeerId: 'host' })} />);
+    expect(playNudgeChime).not.toHaveBeenCalled();
+  });
+
+  // `owesACard` is a dependency of the effect, so it re-runs the moment the player votes. Without
+  // the guard that would chime a second time at someone who has just done what was asked.
+  it('does not chime again when the nudged player finally votes', () => {
+    const { rerender } = nudgeGuest({ votes: {}, myPeerId: 'p2' });
+    expect(playNudgeChime).toHaveBeenCalledTimes(1);
+
+    rerender(<VotingStage {...guestProps({ votes: { p2: '5' }, myPeerId: 'p2', nudgeSignal: 1 })} />);
+    expect(playNudgeChime).toHaveBeenCalledTimes(1);
+  });
+
+  it('sounds again on a second, more insistent nudge', () => {
+    const { rerender } = nudgeGuest({ votes: {}, myPeerId: 'p2' });
+    rerender(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 2 })} />);
+    expect(playNudgeChime).toHaveBeenCalledTimes(2);
+  });
+
+  it('stays quiet on a render that carries no nudge at all', () => {
+    render(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2' })} />);
+    expect(playNudgeChime).not.toHaveBeenCalled();
+  });
+
+  // The regression this guards, and the reason the refs are seeded with the current signal rather
+  // than 0: `nudgeSignal` counts up for the whole session, but this component is torn down and
+  // rebuilt on every reveal — RoomView swaps in RevealStage and back. A fresh mount that starts
+  // counting from zero reads a nudge from three items ago as new, so a single nudge on the first
+  // item chimed again at the top of every item after it.
+  it('does not chime again when a later agenda item remounts the stage', () => {
+    const { unmount } = nudgeGuest({ votes: {}, myPeerId: 'p2' });
+    expect(playNudgeChime).toHaveBeenCalledTimes(1);
+    unmount();
+
+    render(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 1 })} />);
+    expect(playNudgeChime).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no prompt on that remount either', () => {
+    nudgeGuest({ votes: {}, myPeerId: 'p2' }).unmount();
+
+    render(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 1 })} />);
+    expect(screen.queryByText(/waiting on your estimate/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('VotingStage nudge animation', () => {
+  // The regression this guards: replaying the animation by remounting with a React `key` threw
+  // away the focused card button, so a nudge yanked the keyboard focus of the one person it was
+  // addressed to — someone tabbing the deck, deciding. The animation-name parity trick restarts
+  // the animation in place instead.
+  it('leaves a keyboard user’s focus where they put it', () => {
+    const { rerender } = render(
+      <VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 0 })} />,
+    );
+    const card = screen.getByRole('button', { name: 'Play 5' });
+    card.focus();
+    expect(document.activeElement).toBe(card);
+
+    rerender(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 1 })} />);
+
+    // Same element object, not merely another button with the same name: a remount would replace it.
+    expect(screen.getByRole('button', { name: 'Play 5' })).toBe(card);
+    expect(document.activeElement).toBe(card);
+  });
+
+  it('alternates the animation name so a second nudge replays it', () => {
+    const { rerender } = nudgeGuest({ votes: {}, myPeerId: 'p2' });
+    // Read off the attribute rather than `style.animationName`: jsdom does not expand the
+    // `animation` shorthand into its longhands, so the parsed property is empty either way.
+    const hand = () => screen.getByRole('group', { name: /card hand/i }).parentElement;
+    expect(hand()?.getAttribute('style')).toContain('ppnudge-shake-b');
+
+    rerender(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 2 })} />);
+    expect(hand()?.getAttribute('style')).toContain('ppnudge-shake-a');
   });
 });

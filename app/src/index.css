@@ -210,6 +210,60 @@
   }
 }
 
+/* The nudge's three beats, applied as inline `animation:` shorthands from VotingStage. Kept short
+   and finite: the point is to catch an eye that has wandered off to another tab's meeting, not to
+   leave something wobbling on screen for the rest of the round.
+
+   Under `prefers-reduced-motion` the block below flattens all three to nothing. That is deliberate
+   and the cue survives it — the prompt banner is a `role="status"` live region and the card panel
+   holds a solid accent border for the whole six seconds, so a reduced-motion user is told and
+   shown, just not shaken. */
+/* The -a/-b pairs below are identical twins on purpose, and the one piece of duplication in this
+   file that should not be collapsed. A second nudge arriving while the first is still on screen
+   has to replay the animation, and the only way to restart a CSS animation on an element that is
+   already running it is to change its `animation-name`. VotingStage alternates the suffix on the
+   nudge counter's parity to do exactly that.
+
+   The obvious alternative — remounting the element with a React `key` — was tried and reverted:
+   the elements involved contain the card buttons, so remounting throws away the keyboard focus of
+   the very person being nudged. */
+@keyframes ppnudge-shake-a {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-5px); }
+  30% { transform: translateX(5px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  80% { transform: translateX(-2px); }
+}
+@keyframes ppnudge-shake-b {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-5px); }
+  30% { transform: translateX(5px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  80% { transform: translateX(-2px); }
+}
+
+/* Border colour is set by the utility class alongside this; the pulse rides on top as a ring that
+   blooms and fades, so the two never fight over the same property. */
+@keyframes ppnudge-pulse-a {
+  0% { box-shadow: 0 0 0 0 var(--color-accent); }
+  70% { box-shadow: 0 0 0 9px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes ppnudge-pulse-b {
+  0% { box-shadow: 0 0 0 0 var(--color-accent); }
+  70% { box-shadow: 0 0 0 9px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes ppnudge-bounce {
+  0% { opacity: 0; transform: translateY(-14px) scale(0.96); }
+  55% { opacity: 1; transform: translateY(4px) scale(1.03); }
+  75% { transform: translateY(-2px) scale(0.99); }
+  100% { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
