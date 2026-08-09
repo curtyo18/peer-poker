@@ -406,3 +406,64 @@ describe('VotingStage — the seat toggle', () => {
     expect(screen.getByText(/reveal when the table is ready/i)).toBeInTheDocument();
   });
 });
+
+describe('VotingStage — the nudge count', () => {
+  it('leaves the host out of the nudge count', () => {
+    const props = hostProps({
+      participants: [
+        { peerId: 'host', name: 'Ana', role: 'voter', connected: true },
+        { peerId: 'p1', name: 'Bo', role: 'voter', connected: true },
+        { peerId: 'p2', name: 'Cy', role: 'voter', connected: true },
+      ],
+      votes: { p1: '5' },
+      myPeerId: 'host',
+    });
+    render(<VotingStage {...props} />);
+    // Two unvoted voters exist — the host and Cy — but only Cy can receive a nudge.
+    expect(
+      screen.getByRole('button', { name: /nudge 1 player who has not voted/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves a disconnected voter out of the nudge count', () => {
+    const props = hostProps({
+      participants: [
+        { peerId: 'host', name: 'Ana', role: 'observer', connected: true },
+        { peerId: 'p1', name: 'Bo', role: 'voter', connected: true },
+        { peerId: 'p2', name: 'Cy', role: 'voter', connected: false },
+      ],
+      votes: {},
+      myPeerId: 'host',
+    });
+    render(<VotingStage {...props} />);
+    expect(
+      screen.getByRole('button', { name: /nudge 1 player who has not voted/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('hides the nudge button when the host is the only one left to vote', () => {
+    const props = hostProps({
+      participants: [
+        { peerId: 'host', name: 'Ana', role: 'voter', connected: true },
+        { peerId: 'p1', name: 'Bo', role: 'voter', connected: true },
+      ],
+      votes: { p1: '5' },
+      myPeerId: 'host',
+    });
+    render(<VotingStage {...props} />);
+    expect(screen.queryByRole('button', { name: /nudge/i })).not.toBeInTheDocument();
+  });
+
+  it('still counts the host in the table tally', () => {
+    const props = hostProps({
+      participants: [
+        { peerId: 'host', name: 'Ana', role: 'voter', connected: true },
+        { peerId: 'p1', name: 'Bo', role: 'voter', connected: true },
+      ],
+      votes: { p1: '5' },
+      myPeerId: 'host',
+    });
+    render(<VotingStage {...props} />);
+    expect(screen.getByText('1 of 2 voted')).toBeInTheDocument();
+  });
+});

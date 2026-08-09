@@ -96,7 +96,21 @@ export function VotingStage(props: VotingStageProps) {
 
   const voters = state.participants.filter((p) => p.role === 'voter');
   const votedCount = voters.filter((p) => item.votes[p.peerId] !== undefined).length;
-  const stillDeciding = voters.length - votedCount;
+
+  // Who the table is waiting on — includes the host and anyone disconnected, since their card
+  // still counts toward the total.
+  const waitingOnCount = voters.length - votedCount;
+
+  // Who a nudge could actually land on, which is not the same as who still owes a card. A nudge
+  // travels over the host's connections, so the host is never among its own recipients, and
+  // neither is a voter whose connection has dropped. Counting either promises a recipient that no
+  // message arrives at. The tally above deliberately still counts both: a seated host is a voter
+  // and their card does count towards the table's total.
+  const nudgeable = state.participants.filter((p) =>
+    p.role === 'voter'
+    && p.peerId !== state.hostPeerId
+    && p.connected
+    && item.votes[p.peerId] === undefined);
 
   // Three seats, not two: 'none' is now only "no participant record", reachable for a kicked
   // guest or before a record exists — an observing host holds a real 'observer' record, same as
@@ -104,9 +118,9 @@ export function VotingStage(props: VotingStageProps) {
   const seat: 'voter' | 'observer' | 'none' = me?.role ?? 'none';
 
   const handleNudge = () => {
-    if (props.role !== 'host' || stillDeciding === 0 || nudgeSentTo !== null) return;
+    if (props.role !== 'host' || nudgeable.length === 0 || nudgeSentTo !== null) return;
     props.onNudge();
-    setNudgeSentTo(stillDeciding);
+    setNudgeSentTo(nudgeable.length);
   };
 
   // A nudge is addressed to people who still owe a card. An observer does not, and neither does
@@ -129,16 +143,16 @@ export function VotingStage(props: VotingStageProps) {
             <div className="flex items-center gap-3">
               <SeatToggle state={state} myPeerId={myPeerId} isHost={props.role === 'host'} />
               {/* Host only, and gone entirely once there is nobody left to wait for. */}
-              {props.role === 'host' && stillDeciding > 0 && (
+              {props.role === 'host' && nudgeable.length > 0 && (
                 <button
                   type="button"
                   onClick={handleNudge}
                   disabled={nudgeSentTo !== null}
-                  aria-label={`Nudge ${stillDeciding} ${stillDeciding === 1 ? 'player who has' : 'players who have'} not voted`}
+                  aria-label={`Nudge ${nudgeable.length} ${nudgeable.length === 1 ? 'player who has' : 'players who have'} not voted`}
                   className="inline-flex items-center gap-1.5 rounded-full border border-accent/35 bg-accent/12 px-3 py-1 text-xs font-semibold text-accent-soft transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span aria-hidden="true">👋</span>
-                  <span aria-hidden="true">Nudge unvoted ({stillDeciding})</span>
+                  <span aria-hidden="true">Nudge unvoted ({nudgeable.length})</span>
                 </button>
               )}
               <span className="text-[12.5px] font-semibold text-accent-soft">
@@ -300,9 +314,9 @@ export function VotingStage(props: VotingStageProps) {
             <span className="text-[13px] text-muted">
               {voters.length === 0
                 ? 'Nobody has taken a seat yet.'
-                : stillDeciding === 0
+                : waitingOnCount === 0
                   ? "Everyone's in."
-                  : `${stillDeciding} ${stillDeciding === 1 ? 'player' : 'players'} still deciding.`}
+                  : `${waitingOnCount} ${waitingOnCount === 1 ? 'player' : 'players'} still deciding.`}
             </span>
             <div className="ml-auto flex items-center gap-2.5">
               <Button variant="secondary" onClick={() => props.onMutate(skipItem)}>
