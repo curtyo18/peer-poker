@@ -67,8 +67,26 @@ export function applyIntent(state: SessionState, intent: Intent, fromPeerId: str
     case 'changeName':
       return { ...state, participants: state.participants.map((p) =>
         p.peerId === fromPeerId ? { ...p, name: intent.name } : p) };
-    case 'changeRole':
-      return { ...state, participants: state.participants.map((p) =>
-        p.peerId === fromPeerId ? { ...p, role: intent.role } : p) };
+    case 'changeRole': {
+      const participants = state.participants.map((p) =>
+        p.peerId === fromPeerId ? { ...p, role: intent.role } : p);
+      // Standing down takes the card with it. `votedCount` counts only current voters but
+      // voteStats counts every entry in `item.votes`, so a card left behind by someone who
+      // switched to observing shows up in the histogram, the consensus check and the majority
+      // denominator while the tally says they never played — the same double-count the reconnect
+      // path above deletes a stale vote to avoid. An accepted item is settled and keeps its record.
+      const item = activeItem(state);
+      if (intent.role !== 'observer' || !item || item.status === 'accepted'
+        || !(fromPeerId in item.votes)) {
+        return { ...state, participants };
+      }
+      const items = state.items.map((i) => {
+        if (i.id !== item.id) return i;
+        const votes = { ...i.votes };
+        delete votes[fromPeerId];
+        return { ...i, votes };
+      });
+      return { ...state, participants, items };
+    }
   }
 }
