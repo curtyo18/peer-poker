@@ -95,9 +95,10 @@ describe('VotingStage', () => {
     expect(screen.getByText('1 player still deciding.')).toBeInTheDocument();
   });
 
-  // A host who chose not to play has no participant record at all — which is not the same as
-  // being an observer, and must not be described as waiting for themselves.
-  it('never tells a non-voting host to wait for the host', () => {
+  // No participant record is not the same as observing, and must not be described as waiting for
+  // yourself. A seated host who observes is covered separately, below — this is the seatless case,
+  // which a viewer reaches before their record exists or after being removed.
+  it('never tells a seatless host to wait for the host', () => {
     render(<VotingStage {...hostProps({ votes: {}, participants: [], myPeerId: 'host' })} />);
     expect(screen.queryByText(/waiting for the host/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /card hand/i })).not.toBeInTheDocument();
@@ -375,7 +376,9 @@ describe('VotingStage nudge animation', () => {
     rerender(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 2 })} />);
     expect(hand()?.getAttribute('style')).toContain('ppnudge-shake-a');
   });
+});
 
+describe('VotingStage — the seat toggle', () => {
   const seatedHost = (role: 'voter' | 'observer') => hostProps({
     participants: [
       { peerId: 'host', name: 'Ana', role, connected: true },
@@ -386,12 +389,12 @@ describe('VotingStage nudge animation', () => {
 
   it('offers a voting host the seat toggle', () => {
     render(<VotingStage {...seatedHost('voter')} />);
-    expect(screen.getByRole('button', { name: /observe instead/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /observe instead/i })).toBeInTheDocument();
   });
 
   it('offers an observing host the way back to a seat', () => {
     render(<VotingStage {...seatedHost('observer')} />);
-    expect(screen.getByRole('button', { name: /take a seat/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /take a seat/i })).toBeInTheDocument();
   });
 
   // The host is who everyone else is waiting for, so guest copy on their screen tells them they
@@ -399,7 +402,7 @@ describe('VotingStage nudge animation', () => {
   // which reappeared the moment an observing host started holding a real record.
   it('does not tell an observing host they are waiting for the host', () => {
     render(<VotingStage {...seatedHost('observer')} />);
-    expect(screen.queryByText(/waiting for the host to reveal/i)).toBeNull();
-    expect(screen.getByText(/reveal when the table is ready/i)).toBeTruthy();
+    expect(screen.queryByText(/waiting for the host to reveal/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/reveal when the table is ready/i)).toBeInTheDocument();
   });
 });

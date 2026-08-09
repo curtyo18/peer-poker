@@ -6,7 +6,7 @@ import { CardHand } from './CardHand';
 import { DeadRoom } from './ConnState';
 import { LinkedTitle } from './LinkedTitle';
 import { PlayingCard } from './PlayingCard';
-import { changeSeat, otherSeat } from './seat';
+import { SeatToggle } from './SeatToggle';
 import { Avatar, Button, DisplayHeading, Kicker, Panel, PlayerPill, StatusDot, insetClass } from './primitives';
 
 type VotingStageProps = {
@@ -103,13 +103,6 @@ export function VotingStage(props: VotingStageProps) {
   // any other observer, so collapsing it into 'none' would tell them they have no seat at all.
   const seat: 'voter' | 'observer' | 'none' = me?.role ?? 'none';
 
-  // Host and guest both: the host holds a seat like anyone else, and the only difference is which
-  // transport carries the change. See `changeSeat`.
-  const handleToggleRole = () => {
-    if (!me) return;
-    changeSeat(otherSeat(me.role), props.role === 'host', state.hostPeerId);
-  };
-
   const handleNudge = () => {
     if (props.role !== 'host' || stillDeciding === 0 || nudgeSentTo !== null) return;
     props.onNudge();
@@ -134,11 +127,7 @@ export function VotingStage(props: VotingStageProps) {
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
             <Kicker tone="muted">Table &middot; {voters.length} seated</Kicker>
             <div className="flex items-center gap-3">
-              {me && (
-                <Button variant="secondary" size="sm" onClick={handleToggleRole}>
-                  {me.role === 'voter' ? '👁 Observe instead' : 'Take a seat'}
-                </Button>
-              )}
+              <SeatToggle state={state} myPeerId={myPeerId} isHost={props.role === 'host'} />
               {/* Host only, and gone entirely once there is nobody left to wait for. */}
               {props.role === 'host' && stillDeciding > 0 && (
                 <button
@@ -296,9 +285,13 @@ export function VotingStage(props: VotingStageProps) {
               Observers see the table and the reveal but don&rsquo;t play a card, so they never sway
               the estimate. Take a seat to join the next hand.
             </p>
-            <Button variant="primary" className="mt-4" onClick={handleToggleRole}>
-              Take a seat
-            </Button>
+            <SeatToggle
+              state={state}
+              myPeerId={myPeerId}
+              isHost={false}
+              variant="primary"
+              className="mt-4"
+            />
           </Panel>
         )}
 

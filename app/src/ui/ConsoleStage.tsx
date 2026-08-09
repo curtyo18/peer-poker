@@ -2,7 +2,7 @@ import type { SessionState } from '../domain/types';
 import { Agenda } from './Agenda';
 import { DeadRoom } from './ConnState';
 import { ResultsExport } from './ResultsExport';
-import { changeSeat, otherSeat } from './seat';
+import { SeatToggle } from './SeatToggle';
 import { ShareBar } from './ShareBar';
 import { TableCard } from './TableCard';
 import { Badge, Button, DisplayHeading, Kicker, Panel, StatusDot } from './primitives';
@@ -51,16 +51,6 @@ export function ConsoleStage(props: ConsoleStageProps) {
     return <DeadRoom terminal={props.terminal} onLeave={onLeave} />;
   }
   const roomLabel = roomCode?.toUpperCase() ?? state.roomId;
-
-  // Host and guest both — the waiting lobby needs the same "take a seat / observe instead"
-  // affordance before any item is active, and the host has a seat to change now too.
-  const me = props.myPeerId
-    ? state.participants.find((p) => p.peerId === props.myPeerId)
-    : undefined;
-  const handleToggleRole = () => {
-    if (!me) return;
-    changeSeat(otherSeat(me.role), role === 'host', state.hostPeerId);
-  };
 
   return (
     <main
@@ -115,11 +105,12 @@ export function ConsoleStage(props: ConsoleStageProps) {
               </ol>
             </Panel>
             <TableCard state={state} isHost onKick={props.onKick} />
-            {me && (
-              <Button variant="secondary" size="sm" className="mt-3" onClick={handleToggleRole}>
-                {me.role === 'voter' ? '👁 Observe instead' : 'Take a seat'}
-              </Button>
-            )}
+            <SeatToggle
+              state={state}
+              myPeerId={props.myPeerId}
+              isHost={role === 'host'}
+              className="self-start"
+            />
           </div>
           <div className="flex flex-col gap-4">
             {/* The gold edge goes on the panel, not around it: a wrapper drew a second ring
@@ -140,11 +131,12 @@ export function ConsoleStage(props: ConsoleStageProps) {
           <TableCard state={state} isHost={false} />
           <Panel className="text-center">
             <p className="text-sm text-muted">Waiting for the host to start a round.</p>
-            {me && (
-              <Button variant="secondary" size="sm" className="mt-3" onClick={handleToggleRole}>
-                {me.role === 'observer' ? 'Take a seat' : '\u{1F441} Observe instead'}
-              </Button>
-            )}
+            <SeatToggle
+              state={state}
+              myPeerId={props.myPeerId}
+              isHost={false}
+              className="mt-3"
+            />
           </Panel>
         </div>
       )}

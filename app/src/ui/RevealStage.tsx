@@ -8,7 +8,7 @@ import { Histogram } from './Histogram';
 import { LinkedTitle } from './LinkedTitle';
 import { PlayingCard } from './PlayingCard';
 import { ResultsExport } from './ResultsExport';
-import { changeSeat, otherSeat } from './seat';
+import { SeatToggle } from './SeatToggle';
 import {
   Avatar,
   Button,
@@ -86,13 +86,6 @@ export function RevealStage(props: RevealStageProps) {
   if (props.role === 'guest' && props.terminal) {
     return <DeadRoom terminal={props.terminal} onLeave={props.onLeave} />;
   }
-
-  // Host and guest both. It belongs on this screen because votes stay open until the estimate is
-  // accepted, so "take a seat" is still a real offer after the cards are face-up.
-  const handleToggleRole = () => {
-    if (!me) return;
-    changeSeat(otherSeat(me.role), props.role === 'host', state.hostPeerId);
-  };
 
   const showStats = stats.mode.length > 0 || stats.min !== null;
   const nobodyVoted = revealedVoters.length === 0 && Object.keys(item.votes).length === 0;
@@ -284,11 +277,12 @@ export function RevealStage(props: RevealStageProps) {
               </div>
             </div>
 
-            {me && (
-              <Button variant="secondary" size="sm" onClick={handleToggleRole}>
-                {me.role === 'voter' ? '👁 Observe instead' : 'Take a seat'}
-              </Button>
-            )}
+            <SeatToggle
+              state={state}
+              myPeerId={myPeerId}
+              isHost={props.role === 'host'}
+              className="self-start"
+            />
 
             {/* Mounted here as well as on the console, so a host can export or end the session
                 without first finishing the round. ResultsExport already carries its own
@@ -307,9 +301,7 @@ export function RevealStage(props: RevealStageProps) {
               {/* Votes stay open until the estimate is accepted, so an observer watching the
                   reveal can still decide to play — this was the one screen not offering it. */}
               {seat === 'observer' && (
-                <Button variant="secondary" size="sm" onClick={handleToggleRole}>
-                  Take a seat
-                </Button>
+                <SeatToggle state={state} myPeerId={myPeerId} isHost={false} />
               )}
             </div>
           )

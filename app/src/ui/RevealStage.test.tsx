@@ -215,8 +215,8 @@ describe('RevealStage', () => {
     expect(screen.getByRole('button', { name: /confirm/i })).toBeDisabled();
   });
 
-  // A host who chose not to play has no participant record at all, which is not the same as
-  // being an observer — and neither is a guest who has just been removed.
+  // No participant record is not the same as observing: a guest who has just been removed still
+  // has a state that seats everyone else, and must not be shown a seat they no longer hold.
   it('gives a viewer with no seat no card hand and no status line', () => {
     render(<RevealStage {...hostProps({ myPeerId: 'host', participants: [] })} />);
     expect(screen.queryByRole('group', { name: /card hand/i })).not.toBeInTheDocument();
