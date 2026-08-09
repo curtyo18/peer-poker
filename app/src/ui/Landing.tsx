@@ -7,10 +7,12 @@ import {
   loadLastHostRoomName,
   loadLastJoinCode,
   loadName,
+  loadSeatPref,
   saveLastDeckId,
   saveLastHostRoomName,
   saveLastJoinCode,
   saveName,
+  saveSeatPref,
 } from '../store/persistence';
 import { DeckManager } from './DeckManager';
 import { PlayingCard } from './PlayingCard';
@@ -79,7 +81,7 @@ export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
     decks.some((d) => d.id === lastDeckId) ? lastDeckId : FIBONACCI.id,
   );
   const [hostName, setHostName] = useState(() => loadName());
-  const [hostVotes, setHostVotes] = useState(true);
+  const [hostVotes, setHostVotes] = useState(() => loadSeatPref() === 'voter');
   const [roomName, setRoomName] = useState(() => loadLastHostRoomName());
 
   const [enterCode, setEnterCode] = useState(() => loadLastJoinCode());
@@ -97,10 +99,12 @@ export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
     saveLastHostRoomName(roomName.trim());
     // The checkbox stays a boolean because that is what a checkbox is; it becomes a seat once,
     // here at the boundary, so nothing downstream carries two vocabularies for one thing.
+    const hostRole = hostVotes ? 'voter' : 'observer';
+    saveSeatPref(hostRole);
     onHost({
       deck,
       name: hostName,
-      hostRole: hostVotes ? 'voter' : 'observer',
+      hostRole,
       roomName: roomName.trim(),
     });
   };

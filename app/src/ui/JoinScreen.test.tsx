@@ -55,4 +55,33 @@ describe('JoinScreen', () => {
     expect(onJoin).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: /join room/i })).toBeDisabled();
   });
+
+  it('offers Join as the primary action when the stored preference is voter', () => {
+    localStorage.setItem('poker.seatPref', 'voter');
+    render(<JoinScreen roomCode="FROG-42" storedName="Ana" onJoin={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /join room/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /join as observer/i })).toBeInTheDocument();
+  });
+
+  it('offers Observe as the primary action when the stored preference is observer', async () => {
+    localStorage.setItem('poker.seatPref', 'observer');
+    const onJoin = vi.fn();
+    render(<JoinScreen roomCode="FROG-42" storedName="Ana" onJoin={onJoin} />);
+    await userEvent.click(screen.getByRole('button', { name: /^observe/i }));
+    expect(onJoin).toHaveBeenCalledWith({ roomCode: 'FROG-42', name: 'Ana', role: 'observer' });
+  });
+
+  it('remembers the seat chosen on join', async () => {
+    localStorage.setItem('poker.seatPref', 'voter');
+    render(<JoinScreen roomCode="FROG-42" storedName="Ana" onJoin={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: /join as observer/i }));
+    expect(localStorage.getItem('poker.seatPref')).toBe('observer');
+  });
+
+  it('remembers the seat a first-time guest picks', async () => {
+    render(<JoinScreen roomCode="FROG-42" storedName="" onJoin={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText(/what should we call you/i), 'Bo');
+    await userEvent.click(screen.getByRole('button', { name: /^observe/i }));
+    expect(localStorage.getItem('poker.seatPref')).toBe('observer');
+  });
 });
