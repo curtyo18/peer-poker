@@ -7,17 +7,16 @@ import { changeSeat, otherSeat } from './seat';
  *
  * Renders nothing for a peer with no participant record — a guest who has been kicked, or anyone
  * before their record exists — because there is no seat to move them out of. The label is driven
- * off the seat they currently hold, so the four places this appears can never drift apart on what
- * the button says.
+ * off the seat they currently hold, so no two places this appears can drift apart on what the
+ * button says.
  */
 export function SeatToggle({
-  state, myPeerId, isHost, variant = 'secondary', size = 'sm', className = '',
+  state, myPeerId, isHost, variant = 'secondary', className = '',
 }: {
   state: SessionState;
   myPeerId: string | undefined;
   isHost: boolean;
   variant?: 'primary' | 'secondary' | 'ghost';
-  size?: 'sm' | 'md';
   className?: string;
 }) {
   const me = state.participants.find((p) => p.peerId === myPeerId);
@@ -25,7 +24,7 @@ export function SeatToggle({
   return (
     <Button
       variant={variant}
-      size={size}
+      size="sm"
       className={className}
       onClick={() => changeSeat(otherSeat(me.role), isHost, me.peerId)}
     >

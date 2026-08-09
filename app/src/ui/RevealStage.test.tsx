@@ -221,6 +221,10 @@ describe('RevealStage', () => {
     render(<RevealStage {...hostProps({ myPeerId: 'host', participants: [] })} />);
     expect(screen.queryByRole('group', { name: /card hand/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/you played/i)).not.toBeInTheDocument();
+    // No record means no seat to move out of, so the toggle must not be offered either.
+    expect(
+      screen.queryByRole('button', { name: /take a seat|observe instead/i }),
+    ).not.toBeInTheDocument();
   });
 
   // A T-shirt round has no numeric votes at all, so there is no low and no high to report — but

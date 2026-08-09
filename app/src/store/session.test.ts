@@ -31,6 +31,19 @@ describe('session store', () => {
     );
   });
 
+  // A device that has hosted but never stored a name still has to seat someone, and an empty
+  // string would broadcast a nameless participant to every guest.
+  it('falls back to a generic name when the device has none stored', () => {
+    const legacy = {
+      roomId: 'ROOM', hostPeerId: 'HOST', deck: FIBONACCI,
+      participants: [], items: [], activeItemId: null, revealed: false,
+    };
+    useSession.getState().resumeHost(legacy as SessionState);
+    expect(useSession.getState().state!.participants).toContainEqual(
+      { peerId: 'HOST', name: 'Host', role: 'observer', connected: true },
+    );
+  });
+
   it('leaves an already-seated host alone on resume', () => {
     const seated: SessionState = {
       roomId: 'ROOM', hostPeerId: 'HOST', deck: FIBONACCI,

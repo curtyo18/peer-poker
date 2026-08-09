@@ -108,7 +108,7 @@ export function ConsoleStage(props: ConsoleStageProps) {
             <SeatToggle
               state={state}
               myPeerId={props.myPeerId}
-              isHost={role === 'host'}
+              isHost
               className="self-start"
             />
           </div>

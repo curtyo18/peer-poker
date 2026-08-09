@@ -102,6 +102,11 @@ describe('VotingStage', () => {
     render(<VotingStage {...hostProps({ votes: {}, participants: [], myPeerId: 'host' })} />);
     expect(screen.queryByText(/waiting for the host/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /card hand/i })).not.toBeInTheDocument();
+    // No record means no seat to move out of, so the toggle must not be offered either — it would
+    // be wired to a participant that does not exist.
+    expect(
+      screen.queryByRole('button', { name: /take a seat|observe instead/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /reveal all/i })).toBeInTheDocument();
   });
 

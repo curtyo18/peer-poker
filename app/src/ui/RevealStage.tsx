@@ -280,7 +280,7 @@ export function RevealStage(props: RevealStageProps) {
             <SeatToggle
               state={state}
               myPeerId={myPeerId}
-              isHost={props.role === 'host'}
+              isHost
               className="self-start"
             />
 
