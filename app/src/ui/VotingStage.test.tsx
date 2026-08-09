@@ -31,7 +31,6 @@ function base(overrides: Overrides) {
   const state: SessionState = {
     roomId: 'FROG-42',
     hostPeerId: 'host',
-    hostVotes: true,
     deck: FIBONACCI,
     participants: overrides.participants ?? [
       { peerId: 'p1', name: 'Ana', role: 'voter', connected: true },

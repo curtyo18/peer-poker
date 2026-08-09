@@ -42,7 +42,7 @@ describe('session store', () => {
   });
 
   it('applies an intent through the store', () => {
-    useSession.getState().initHost('ROOM', FIBONACCI, false);
+    useSession.getState().initHost('ROOM', FIBONACCI);
     useSession.getState().dispatch({ type: 'join', name: 'Al', role: 'voter' }, 'P1');
     expect(useSession.getState().state!.participants).toHaveLength(1);
   });
@@ -54,7 +54,7 @@ describe('session store', () => {
   });
 
   it('update() applies a mutation to the current state', () => {
-    useSession.getState().initHost('ROOM', FIBONACCI, false);
+    useSession.getState().initHost('ROOM', FIBONACCI);
     useSession.getState().update((s) => ({ ...s, revealed: true }));
     expect(useSession.getState().state!.revealed).toBe(true);
   });
@@ -67,7 +67,7 @@ describe('session store', () => {
   });
 
   it('reset() clears state and host flag', () => {
-    useSession.getState().initHost('ROOM', FIBONACCI, true);
+    useSession.getState().initHost('ROOM', FIBONACCI);
     expect(useSession.getState().isHost).toBe(true);
     useSession.getState().reset();
     expect(useSession.getState().state).toBeNull();

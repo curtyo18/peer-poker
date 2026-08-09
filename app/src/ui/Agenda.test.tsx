@@ -9,7 +9,6 @@ function emptyState(): SessionState {
   return {
     roomId: 'FROG-42',
     hostPeerId: 'host-1',
-    hostVotes: false,
     deck: FIBONACCI,
     participants: [],
     items: [],

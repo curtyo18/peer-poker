@@ -23,7 +23,6 @@ function stateWith(overrides: Partial<SessionState> = {}): SessionState {
   return {
     roomId: 'FROG-42',
     hostPeerId: 'host',
-    hostVotes: true,
     deck: FIBONACCI,
     participants: [{ peerId: 'p1', name: 'Ana', role: 'voter', connected: true }],
     items: [item],

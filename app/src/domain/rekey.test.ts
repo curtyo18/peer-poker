@@ -6,7 +6,6 @@ import { FIBONACCI } from './decks';
 const state: SessionState = {
   roomId: 'pp-old',
   hostPeerId: 'pp-old',
-  hostVotes: true,
   deck: FIBONACCI,
   participants: [
     { peerId: 'pp-old', name: 'Curt', role: 'voter', connected: true },

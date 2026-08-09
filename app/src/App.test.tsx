@@ -61,7 +61,6 @@ const ROOM_ID = 'pp-1234567890abcdef1234567890abcdef';
 const savedState: SessionState = {
   roomId: ROOM_ID,
   hostPeerId: ROOM_ID,
-  hostVotes: true,
   deck: FIBONACCI,
   participants: [{ peerId: ROOM_ID, name: 'Curt', role: 'voter', connected: true }],
   items: [{ id: 'i1', title: 'Login', status: 'voting', votes: {}, acceptedEstimate: null }],
