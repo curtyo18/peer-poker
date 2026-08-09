@@ -61,7 +61,9 @@ function HeroFan() {
 }
 
 interface LandingProps {
-  onHost: (args: { deck: Deck; name: string; hostVotes: boolean; roomName: string }) => void;
+  onHost: (args: {
+    deck: Deck; name: string; hostRole: 'voter' | 'observer'; roomName: string;
+  }) => void;
   /** A typed room code routes to the join screen; the landing page never joins directly. */
   onEnterCode: (code: string) => void;
   /** A prior host session on this device, offered directly above the host card. */
@@ -93,7 +95,14 @@ export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
     saveName(hostName);
     saveLastDeckId(deck.id);
     saveLastHostRoomName(roomName.trim());
-    onHost({ deck, name: hostName, hostVotes, roomName: roomName.trim() });
+    // The checkbox stays a boolean because that is what a checkbox is; it becomes a seat once,
+    // here at the boundary, so nothing downstream carries two vocabularies for one thing.
+    onHost({
+      deck,
+      name: hostName,
+      hostRole: hostVotes ? 'voter' : 'observer',
+      roomName: roomName.trim(),
+    });
   };
 
   const handleEnterCodeSubmit: React.FormEventHandler = (e) => {

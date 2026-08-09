@@ -190,7 +190,8 @@ function App() {
   };
 
   const handleHost = async (
-    { deck, name, hostVotes, roomName }: { deck: Deck; name: string; hostVotes: boolean; roomName: string },
+    { deck, name, hostRole, roomName }:
+      { deck: Deck; name: string; hostRole: 'voter' | 'observer'; roomName: string },
   ) => {
     setHostError(null);
     const code = roomName.trim() ? roomName.trim() : randomRoomCode();
@@ -207,14 +208,14 @@ function App() {
       },
     });
     hp.ready.then((assignedId) => {
-      useSession.getState().initHost(assignedId, deck, hostVotes);
+      useSession.getState().initHost(assignedId, deck);
       const host = makeHostConn();
       setHost(host);
       hp.peer.on('connection', (conn) => conn.on('open', () => host.onConnection(conn)));
-      if (hostVotes) {
-        useSession.getState().dispatch({ type: 'join', name, role: 'voter' }, assignedId);
-        host.broadcast();
-      }
+      // Unconditional now: the host holds a seat either way, and an observing host with no
+      // participant record would have nothing to toggle when they change their mind.
+      useSession.getState().dispatch({ type: 'join', name, role: hostRole }, assignedId);
+      host.broadcast();
       setShareLink(buildLink(code));
       syncUrl(code);
       setMyPeerId(assignedId);
@@ -375,7 +376,7 @@ function App() {
     void handleHost({
       deck,
       name: attemptedJoin.name,
-      hostVotes: attemptedJoin.role === 'voter',
+      hostRole: attemptedJoin.role,
       roomName: attemptedJoin.roomCode,
     });
   };
