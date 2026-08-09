@@ -275,7 +275,7 @@ export function VotingStage(props: VotingStageProps) {
             {/* The shake is on a wrapper, not the Panel, so the panel's border and its pulse ring
                 hold still while the cards move — a box that shakes with its own ring reads as a
                 rendering glitch rather than as someone tapping you on the shoulder. */}
-            <div style={nudgeAnimation('ppnudge-shake', '0.45s ease-in-out')}>
+            <div style={nudgeAnimation('ppnudge-shake', '0.675s ease-in-out')}>
               <CardHand deck={state.deck} myVote={myVote} disabled={state.revealed} onVote={onVote} />
             </div>
           </Panel>
