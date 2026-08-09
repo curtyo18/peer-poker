@@ -154,6 +154,43 @@ describe('applyIntent', () => {
     expect(s.participants[0].role).toBe('observer');
   });
 
+  // The cards being face-up is not the gate — `castVote` keeps taking votes until the item is
+  // accepted, so standing down has to keep taking them back over exactly the same window.
+  it('drops the vote of a voter who switches to observing after the reveal', () => {
+    const state: SessionState = {
+      ...base(),
+      participants: [{ peerId: 'p1', name: 'Ana', role: 'voter', connected: true }],
+      items: [{
+        id: 'i1', title: 'T', status: 'revealed',
+        votes: { p1: '8', p2: '3' }, acceptedEstimate: null,
+      }],
+      activeItemId: 'i1',
+    };
+    const next = applyIntent(state, { type: 'changeRole', role: 'observer' }, 'p1');
+    expect(next.items[0].votes).toEqual({ p2: '3' });
+  });
+
+  it('leaves votes on other items alone', () => {
+    const state: SessionState = {
+      ...base(),
+      participants: [{ peerId: 'p1', name: 'Ana', role: 'voter', connected: true }],
+      items: [
+        {
+          id: 'i0', title: 'Done', status: 'revealed',
+          votes: { p1: '5' }, acceptedEstimate: null,
+        },
+        {
+          id: 'i1', title: 'T', status: 'voting',
+          votes: { p1: '8' }, acceptedEstimate: null,
+        },
+      ],
+      activeItemId: 'i1',
+    };
+    const next = applyIntent(state, { type: 'changeRole', role: 'observer' }, 'p1');
+    expect(next.items[0].votes).toEqual({ p1: '5' });
+    expect(next.items[1].votes).toEqual({});
+  });
+
   it('drops the vote of a voter who switches to observing', () => {
     const state: SessionState = {
       ...base(),
