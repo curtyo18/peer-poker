@@ -1,15 +1,30 @@
 import { useState } from 'react';
-import { saveName } from '../store/persistence';
+import { loadSeatPref, saveName, saveSeatPref } from '../store/persistence';
 import { Avatar, Button, Kicker, inputClass, monoClass } from './primitives';
+import { otherSeat } from './seat';
+
+type Seat = 'voter' | 'observer';
+
+const seatLabel = (role: Seat) => (role === 'voter' ? 'Join room →' : 'Observe');
 
 interface JoinScreenProps {
   roomCode: string;
   storedName: string;
-  onJoin: (args: { roomCode: string; name: string; role: 'voter' | 'observer' }) => void;
+  onJoin: (args: { roomCode: string; name: string; role: Seat }) => void;
 }
 
 export function JoinScreen({ roomCode, storedName, onJoin }: JoinScreenProps) {
   const [name, setName] = useState(() => storedName.trim());
+  // Read once, at mount: the preference decides which action this screen leads with, and a value
+  // that moved underneath it would reorder the buttons while someone was reaching for one.
+  const [preferred] = useState<Seat>(() => loadSeatPref());
+
+  // Every join goes through here so the seat is remembered wherever it was picked — the primary
+  // action, the secondary, or the Enter key.
+  const join = (joinedName: string, role: Seat) => {
+    saveSeatPref(role);
+    onJoin({ roomCode, name: joinedName, role });
+  };
 
   return (
     <main
@@ -34,12 +49,14 @@ export function JoinScreen({ roomCode, storedName, onJoin }: JoinScreenProps) {
         {name ? (
           <KnownGuest
             name={name}
+            preferred={preferred}
             onNotYou={() => setName('')}
-            onJoin={(role) => onJoin({ roomCode, name, role })}
+            onJoin={(role) => join(name, role)}
           />
         ) : (
           <NewGuest
-            onJoin={(joinedName, role) => onJoin({ roomCode, name: joinedName, role })}
+            preferred={preferred}
+            onJoin={(joinedName, role) => join(joinedName, role)}
           />
         )}
       </div>
@@ -49,13 +66,16 @@ export function JoinScreen({ roomCode, storedName, onJoin }: JoinScreenProps) {
 
 function KnownGuest({
   name,
+  preferred,
   onNotYou,
   onJoin,
 }: {
   name: string;
+  preferred: Seat;
   onNotYou: () => void;
-  onJoin: (role: 'voter' | 'observer') => void;
+  onJoin: (role: Seat) => void;
 }) {
+  const alternative = otherSeat(preferred);
   return (
     <>
       <div className="mb-[18px] flex items-center gap-3 rounded-[14px] border border-border bg-input-bg p-3.5 text-left sm:p-4">
@@ -65,16 +85,16 @@ function KnownGuest({
           <div className="text-[17px] font-bold text-fg">{name}</div>
         </div>
       </div>
-      <Button variant="primary" className="mb-3 w-full" onClick={() => onJoin('voter')}>
-        Join room &rarr;
+      <Button variant="primary" className="mb-3 w-full" onClick={() => onJoin(preferred)}>
+        {seatLabel(preferred)}
       </Button>
       <div className="flex items-center justify-center gap-3 text-[13.5px]">
         <Button variant="ghost" size="sm" onClick={onNotYou}>
           Not you? Use a different name
         </Button>
         <span className="text-muted">&middot;</span>
-        <Button variant="ghost" size="sm" onClick={() => onJoin('observer')}>
-          Join as observer
+        <Button variant="ghost" size="sm" onClick={() => onJoin(alternative)}>
+          {alternative === 'observer' ? 'Join as observer' : 'Join as a player'}
         </Button>
       </div>
     </>
@@ -82,26 +102,30 @@ function KnownGuest({
 }
 
 function NewGuest({
+  preferred,
   onJoin,
 }: {
-  onJoin: (name: string, role: 'voter' | 'observer') => void;
+  preferred: Seat;
+  onJoin: (name: string, role: Seat) => void;
 }) {
   const [draftName, setDraftName] = useState('');
   const trimmedName = draftName.trim();
+  const alternative = otherSeat(preferred);
 
-  const submit = (role: 'voter' | 'observer') => {
+  const submit = (role: Seat) => {
     if (!trimmedName) return;
     saveName(trimmedName);
     onJoin(trimmedName, role);
   };
 
   // A form, not a bare field: Enter submits everywhere else a name is typed in this app, and a
-  // one-field screen where the keyboard does nothing is the worst place to break that.
+  // one-field screen where the keyboard does nothing is the worst place to break that. Enter takes
+  // the preferred seat, the same one the primary button offers.
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        submit('voter');
+        submit(preferred);
       }}
     >
       <div className="mb-4 text-left">
@@ -124,10 +148,10 @@ function NewGuest({
       </div>
       <div className="mb-1.5 flex gap-2.5">
         <Button type="submit" variant="primary" className="flex-1" disabled={!trimmedName}>
-          Join room &rarr;
+          {seatLabel(preferred)}
         </Button>
-        <Button variant="secondary" disabled={!trimmedName} onClick={() => submit('observer')}>
-          Observe
+        <Button variant="secondary" disabled={!trimmedName} onClick={() => submit(alternative)}>
+          {seatLabel(alternative)}
         </Button>
       </div>
     </form>

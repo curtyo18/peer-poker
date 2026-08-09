@@ -28,7 +28,6 @@ export interface AgendaItem {
 export interface SessionState {
   roomId: string;
   hostPeerId: string;
-  hostVotes: boolean;
   deck: Deck;
   participants: Participant[];
   items: AgendaItem[];

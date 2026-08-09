@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   loadName, saveName, loadDecks, saveDecks, loadRoomCode, saveRoomCode, clearRoomCode,
   loadLastHostRoomName, saveLastHostRoomName, loadLastJoinCode, saveLastJoinCode,
+  loadSeatPref, saveSeatPref,
 } from './persistence';
 import { BUILTIN_DECKS, FIBONACCI, TSHIRT, newDeck } from '../domain/decks';
 
@@ -62,5 +63,21 @@ describe('persistence', () => {
 
   it('returns empty last join code when unset', () => {
     expect(loadLastJoinCode()).toBe('');
+  });
+
+  it('defaults the seat preference to voter when unset', () => {
+    expect(loadSeatPref()).toBe('voter');
+  });
+
+  it('round-trips the seat preference', () => {
+    saveSeatPref('observer');
+    expect(loadSeatPref()).toBe('observer');
+    saveSeatPref('voter');
+    expect(loadSeatPref()).toBe('voter');
+  });
+
+  it('falls back to voter on an unrecognised stored seat preference', () => {
+    localStorage.setItem('poker.seatPref', 'spectator');
+    expect(loadSeatPref()).toBe('voter');
   });
 });

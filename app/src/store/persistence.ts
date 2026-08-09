@@ -10,6 +10,7 @@ const K = {
   roomCode: 'poker.roomCode',
   lastHostRoomName: 'poker.lastHostRoomName',
   lastJoinCode: 'poker.lastJoinCode',
+  seatPref: 'poker.seatPref',
 } as const;
 
 function get(key: string): string | null {
@@ -57,3 +58,11 @@ export const saveLastHostRoomName = (name: string): void => set(K.lastHostRoomNa
 
 export const loadLastJoinCode = (): string => get(K.lastJoinCode) ?? '';
 export const saveLastJoinCode = (code: string): void => set(K.lastJoinCode, code);
+
+// The seat a person last chose for themselves at an entry point. Deliberately outlives a session,
+// like the two above: a host who never plays should not have to say so every time, and neither
+// should a repeat observer. Anything unrecognised reads as 'voter', which is what a device with no
+// preference at all has always defaulted to.
+export const loadSeatPref = (): 'voter' | 'observer' =>
+  get(K.seatPref) === 'observer' ? 'observer' : 'voter';
+export const saveSeatPref = (role: 'voter' | 'observer'): void => set(K.seatPref, role);

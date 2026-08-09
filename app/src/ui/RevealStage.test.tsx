@@ -28,7 +28,6 @@ function base(overrides: Overrides) {
   const state: SessionState = {
     roomId: 'FROG-42',
     hostPeerId: 'host',
-    hostVotes: true,
     deck: overrides.deck ?? FIBONACCI,
     participants: overrides.participants ?? [
       { peerId: 'p1', name: 'Ana', role: 'voter', connected: true },
@@ -216,12 +215,16 @@ describe('RevealStage', () => {
     expect(screen.getByRole('button', { name: /confirm/i })).toBeDisabled();
   });
 
-  // A host who chose not to play has no participant record at all, which is not the same as
-  // being an observer — and neither is a guest who has just been removed.
+  // No participant record is not the same as observing: a guest who has just been removed still
+  // has a state that seats everyone else, and must not be shown a seat they no longer hold.
   it('gives a viewer with no seat no card hand and no status line', () => {
     render(<RevealStage {...hostProps({ myPeerId: 'host', participants: [] })} />);
     expect(screen.queryByRole('group', { name: /card hand/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/you played/i)).not.toBeInTheDocument();
+    // No record means no seat to move out of, so the toggle must not be offered either.
+    expect(
+      screen.queryByRole('button', { name: /take a seat|observe instead/i }),
+    ).not.toBeInTheDocument();
   });
 
   // A T-shirt round has no numeric votes at all, so there is no low and no high to report — but

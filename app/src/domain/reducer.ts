@@ -8,6 +8,31 @@ export type Intent =
 
 const activeItem = (s: SessionState) => s.items.find((i) => i.id === s.activeItemId) ?? null;
 
+/**
+ * Take a peer's card back off the active item.
+ *
+ * A vote outlives the seat that cast it unless something removes it, and nothing downstream
+ * reconciles the two: the stages count votes by walking current voters, while `voteStats` counts
+ * every entry in `item.votes`. An orphan is therefore invisible in "N of M voted" and fully counted
+ * in the histogram, the consensus check and the majority denominator.
+ *
+ * Returns the state untouched when there is nothing to take back, so callers can apply it
+ * unconditionally. An accepted item keeps its record — the estimate is agreed and the round is over.
+ */
+function withoutVote(state: SessionState, peerId: string): SessionState {
+  const item = activeItem(state);
+  if (!item || item.status === 'accepted' || !(peerId in item.votes)) return state;
+  return {
+    ...state,
+    items: state.items.map((i) => {
+      if (i.id !== item.id) return i;
+      const votes = { ...i.votes };
+      delete votes[peerId];
+      return { ...i, votes };
+    }),
+  };
+}
+
 export function applyIntent(state: SessionState, intent: Intent, fromPeerId: string): SessionState {
   switch (intent.type) {
     case 'join': {
@@ -36,16 +61,7 @@ export function applyIntent(state: SessionState, intent: Intent, fromPeerId: str
         // the merged participant just votes again under fromPeerId if the round is still open.
         // (rekey.ts's rekeyHost carries a vote across instead of dropping it — that's the host's
         // own peer id changing, a certainty, not a name-guessed identity like this one.)
-        const item = activeItem(state);
-        const items = item && item.status !== 'accepted' && reconnecting.peerId in item.votes
-          ? state.items.map((i) => {
-              if (i.id !== item.id) return i;
-              const votes = { ...i.votes };
-              delete votes[reconnecting.peerId];
-              return { ...i, votes };
-            })
-          : state.items;
-        return { ...state, participants, items };
+        return { ...withoutVote(state, reconnecting.peerId), participants };
       }
 
       const participants = [...state.participants,
@@ -67,8 +83,13 @@ export function applyIntent(state: SessionState, intent: Intent, fromPeerId: str
     case 'changeName':
       return { ...state, participants: state.participants.map((p) =>
         p.peerId === fromPeerId ? { ...p, name: intent.name } : p) };
-    case 'changeRole':
-      return { ...state, participants: state.participants.map((p) =>
-        p.peerId === fromPeerId ? { ...p, role: intent.role } : p) };
+    case 'changeRole': {
+      const participants = state.participants.map((p) =>
+        p.peerId === fromPeerId ? { ...p, role: intent.role } : p);
+      // Standing down takes the card with it; taking a seat leaves the table alone. Votes stay
+      // open until the item is accepted, so this applies just as much once the cards are face-up.
+      const settled = intent.role === 'observer' ? withoutVote(state, fromPeerId) : state;
+      return { ...settled, participants };
+    }
   }
 }

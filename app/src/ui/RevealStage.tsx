@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { AgendaItem, CardValue, SessionState } from '../domain/types';
-import { getGuest } from '../net/live';
 import { voteStats, suggestedValue, outlierValue } from '../domain/voting';
 import { accept, revote, setActive } from '../domain/hostActions';
 import { CardHand } from './CardHand';
@@ -9,6 +8,7 @@ import { Histogram } from './Histogram';
 import { LinkedTitle } from './LinkedTitle';
 import { PlayingCard } from './PlayingCard';
 import { ResultsExport } from './ResultsExport';
+import { SeatToggle } from './SeatToggle';
 import {
   Avatar,
   Button,
@@ -60,9 +60,9 @@ export function RevealStage(props: RevealStageProps) {
   const { state, item, myPeerId, onVote } = props;
 
   const me = state.participants.find((p) => p.peerId === myPeerId);
-  // Three seats, not two: a host who chose not to play is never seated at all, and a kicked guest
-  // stops being seated mid-round. Collapsing "no record" into "observer" tells a host they are
-  // waiting for themselves, and tells a removed guest they are observing. Both were live bugs.
+  // Three seats, not two: 'none' is now only "no participant record", reachable for a kicked
+  // guest or before a record exists — an observing host holds a real 'observer' record, same as
+  // any other observer, so collapsing it into 'none' would tell them they have no seat at all.
   const seat: 'voter' | 'observer' | 'none' = me?.role ?? 'none';
   const voters = state.participants.filter((p) => p.role === 'voter');
   const revealedVoters = voters.filter((p) => item.votes[p.peerId] !== undefined);
@@ -86,13 +86,6 @@ export function RevealStage(props: RevealStageProps) {
   if (props.role === 'guest' && props.terminal) {
     return <DeadRoom terminal={props.terminal} onLeave={props.onLeave} />;
   }
-
-  // Guest-only, same as the lobby's and the voting stage's. It belongs here because this branch
-  // keeps votes open until the estimate is accepted, so "take a seat" is still a real offer.
-  const handleToggleRole = () => {
-    if (!me) return;
-    getGuest()?.changeRole(me.role === 'observer' ? 'voter' : 'observer');
-  };
 
   const showStats = stats.mode.length > 0 || stats.min !== null;
   const nobodyVoted = revealedVoters.length === 0 && Object.keys(item.votes).length === 0;
@@ -284,6 +277,13 @@ export function RevealStage(props: RevealStageProps) {
               </div>
             </div>
 
+            <SeatToggle
+              state={state}
+              myPeerId={myPeerId}
+              isHost
+              className="self-start"
+            />
+
             {/* Mounted here as well as on the console, so a host can export or end the session
                 without first finishing the round. ResultsExport already carries its own
                 "Results & export" heading — an outer one would say it twice. */}
@@ -301,9 +301,7 @@ export function RevealStage(props: RevealStageProps) {
               {/* Votes stay open until the estimate is accepted, so an observer watching the
                   reveal can still decide to play — this was the one screen not offering it. */}
               {seat === 'observer' && (
-                <Button variant="secondary" size="sm" onClick={handleToggleRole}>
-                  Take a seat
-                </Button>
+                <SeatToggle state={state} myPeerId={myPeerId} isHost={false} />
               )}
             </div>
           )

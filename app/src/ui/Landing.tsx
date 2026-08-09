@@ -7,10 +7,12 @@ import {
   loadLastHostRoomName,
   loadLastJoinCode,
   loadName,
+  loadSeatPref,
   saveLastDeckId,
   saveLastHostRoomName,
   saveLastJoinCode,
   saveName,
+  saveSeatPref,
 } from '../store/persistence';
 import { DeckManager } from './DeckManager';
 import { PlayingCard } from './PlayingCard';
@@ -61,7 +63,9 @@ function HeroFan() {
 }
 
 interface LandingProps {
-  onHost: (args: { deck: Deck; name: string; hostVotes: boolean; roomName: string }) => void;
+  onHost: (args: {
+    deck: Deck; name: string; hostRole: 'voter' | 'observer'; roomName: string;
+  }) => void;
   /** A typed room code routes to the join screen; the landing page never joins directly. */
   onEnterCode: (code: string) => void;
   /** A prior host session on this device, offered directly above the host card. */
@@ -77,7 +81,7 @@ export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
     decks.some((d) => d.id === lastDeckId) ? lastDeckId : FIBONACCI.id,
   );
   const [hostName, setHostName] = useState(() => loadName());
-  const [hostVotes, setHostVotes] = useState(true);
+  const [hostVotes, setHostVotes] = useState(() => loadSeatPref() === 'voter');
   const [roomName, setRoomName] = useState(() => loadLastHostRoomName());
 
   const [enterCode, setEnterCode] = useState(() => loadLastJoinCode());
@@ -93,7 +97,16 @@ export function Landing({ onHost, onEnterCode, resume }: LandingProps) {
     saveName(hostName);
     saveLastDeckId(deck.id);
     saveLastHostRoomName(roomName.trim());
-    onHost({ deck, name: hostName, hostVotes, roomName: roomName.trim() });
+    // The checkbox stays a boolean because that is what a checkbox is; it becomes a seat once,
+    // here at the boundary, so nothing downstream carries two vocabularies for one thing.
+    const hostRole = hostVotes ? 'voter' : 'observer';
+    saveSeatPref(hostRole);
+    onHost({
+      deck,
+      name: hostName,
+      hostRole,
+      roomName: roomName.trim(),
+    });
   };
 
   const handleEnterCodeSubmit: React.FormEventHandler = (e) => {

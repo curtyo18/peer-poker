@@ -6,7 +6,7 @@ import { FIBONACCI } from '../domain/decks';
 describe('makeHostConn', () => {
   it('applies an inbound join intent and broadcasts state', () => {
     useSession.getState().reset();
-    useSession.getState().initHost('ROOM', FIBONACCI, false);
+    useSession.getState().initHost('ROOM', FIBONACCI);
     const sent: unknown[] = [];
     const fakeConn = { peer: 'P1', on: vi.fn(), send: (m: unknown) => sent.push(m) };
     const host = makeHostConn();
@@ -20,7 +20,7 @@ describe('makeHostConn', () => {
   // and every client already knows whether it has voted.
   it('sends a nudge to the whole room, naming no recipients', () => {
     useSession.getState().reset();
-    useSession.getState().initHost('ROOM', FIBONACCI, false);
+    useSession.getState().initHost('ROOM', FIBONACCI);
     const a: unknown[] = [];
     const b: unknown[] = [];
     const host = makeHostConn();

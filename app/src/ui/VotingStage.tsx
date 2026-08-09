@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AgendaItem, CardValue, SessionState } from '../domain/types';
 import { playNudgeChime } from '../audio/sound';
-import { getGuest } from '../net/live';
 import { reveal, skipItem } from '../domain/hostActions';
 import { CardHand } from './CardHand';
 import { DeadRoom } from './ConnState';
 import { LinkedTitle } from './LinkedTitle';
 import { PlayingCard } from './PlayingCard';
+import { SeatToggle } from './SeatToggle';
 import { Avatar, Button, DisplayHeading, Kicker, Panel, PlayerPill, StatusDot, insetClass } from './primitives';
 
 type VotingStageProps = {
@@ -96,23 +96,31 @@ export function VotingStage(props: VotingStageProps) {
 
   const voters = state.participants.filter((p) => p.role === 'voter');
   const votedCount = voters.filter((p) => item.votes[p.peerId] !== undefined).length;
-  const stillDeciding = voters.length - votedCount;
 
-  // Three seats, not two: a host who chose not to play is never seated at all, and a kicked guest
-  // stops being seated mid-round. Collapsing "no record" into "observer" tells a host they are
-  // waiting for themselves, and tells a removed guest they are observing. Both were live bugs.
+  // Who the table is waiting on — includes the host and anyone disconnected, since their card
+  // still counts toward the total.
+  const waitingOnCount = voters.length - votedCount;
+
+  // Who a nudge could actually land on, which is not the same as who still owes a card. A nudge
+  // travels over the host's connections, so the host is never among its own recipients, and
+  // neither is a voter whose connection has dropped. Counting either promises a recipient that no
+  // message arrives at. The tally above deliberately still counts both: a seated host is a voter
+  // and their card does count towards the table's total.
+  const nudgeable = state.participants.filter((p) =>
+    p.role === 'voter'
+    && p.peerId !== state.hostPeerId
+    && p.connected
+    && item.votes[p.peerId] === undefined);
+
+  // Three seats, not two: 'none' is now only "no participant record", reachable for a kicked
+  // guest or before a record exists — an observing host holds a real 'observer' record, same as
+  // any other observer, so collapsing it into 'none' would tell them they have no seat at all.
   const seat: 'voter' | 'observer' | 'none' = me?.role ?? 'none';
 
-  // Guest-only: identical to ConsoleStage's/ParticipantView's role toggle.
-  const handleToggleRole = () => {
-    if (!me) return;
-    getGuest()?.changeRole(me.role === 'observer' ? 'voter' : 'observer');
-  };
-
   const handleNudge = () => {
-    if (props.role !== 'host' || stillDeciding === 0 || nudgeSentTo !== null) return;
+    if (props.role !== 'host' || nudgeable.length === 0 || nudgeSentTo !== null) return;
     props.onNudge();
-    setNudgeSentTo(stillDeciding);
+    setNudgeSentTo(nudgeable.length);
   };
 
   // A nudge is addressed to people who still owe a card. An observer does not, and neither does
@@ -133,22 +141,18 @@ export function VotingStage(props: VotingStageProps) {
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
             <Kicker tone="muted">Table &middot; {voters.length} seated</Kicker>
             <div className="flex items-center gap-3">
-              {props.role === 'guest' && me && (
-                <Button variant="secondary" size="sm" onClick={handleToggleRole}>
-                  {me.role === 'voter' ? '👁 Observe instead' : 'Take a seat'}
-                </Button>
-              )}
+              <SeatToggle state={state} myPeerId={myPeerId} isHost={props.role === 'host'} />
               {/* Host only, and gone entirely once there is nobody left to wait for. */}
-              {props.role === 'host' && stillDeciding > 0 && (
+              {props.role === 'host' && nudgeable.length > 0 && (
                 <button
                   type="button"
                   onClick={handleNudge}
                   disabled={nudgeSentTo !== null}
-                  aria-label={`Nudge ${stillDeciding} ${stillDeciding === 1 ? 'player who has' : 'players who have'} not voted`}
+                  aria-label={`Nudge ${nudgeable.length} ${nudgeable.length === 1 ? 'player who has' : 'players who have'} not voted`}
                   className="inline-flex items-center gap-1.5 rounded-full border border-accent/35 bg-accent/12 px-3 py-1 text-xs font-semibold text-accent-soft transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span aria-hidden="true">👋</span>
-                  <span aria-hidden="true">Nudge unvoted ({stillDeciding})</span>
+                  <span aria-hidden="true">Nudge unvoted ({nudgeable.length})</span>
                 </button>
               )}
               <span className="text-[12.5px] font-semibold text-accent-soft">
@@ -232,7 +236,9 @@ export function VotingStage(props: VotingStageProps) {
           {seat !== 'none' && (
             <p className="mt-4 text-center text-[12.5px] text-muted">
               {seat === 'observer'
-                ? 'Waiting for the host to reveal.'
+                ? props.role === 'host'
+                  ? 'You’re observing. Reveal when the table is ready.'
+                  : 'Waiting for the host to reveal.'
                 : myVote !== undefined
                   ? `You played ${myVote} · tap another card to change it — the table flips when the host reveals.`
                   : 'Play a card to join the round — the table flips when the host reveals.'}
@@ -293,9 +299,13 @@ export function VotingStage(props: VotingStageProps) {
               Observers see the table and the reveal but don&rsquo;t play a card, so they never sway
               the estimate. Take a seat to join the next hand.
             </p>
-            <Button variant="primary" className="mt-4" onClick={handleToggleRole}>
-              Take a seat
-            </Button>
+            <SeatToggle
+              state={state}
+              myPeerId={myPeerId}
+              isHost={false}
+              variant="primary"
+              className="mt-4"
+            />
           </Panel>
         )}
 
@@ -304,9 +314,9 @@ export function VotingStage(props: VotingStageProps) {
             <span className="text-[13px] text-muted">
               {voters.length === 0
                 ? 'Nobody has taken a seat yet.'
-                : stillDeciding === 0
+                : waitingOnCount === 0
                   ? "Everyone's in."
-                  : `${stillDeciding} ${stillDeciding === 1 ? 'player' : 'players'} still deciding.`}
+                  : `${waitingOnCount} ${waitingOnCount === 1 ? 'player' : 'players'} still deciding.`}
             </span>
             <div className="ml-auto flex items-center gap-2.5">
               <Button variant="secondary" onClick={() => props.onMutate(skipItem)}>
@@ -319,8 +329,9 @@ export function VotingStage(props: VotingStageProps) {
           </div>
         ) : (
           <>
-            {/* Nothing at all when the viewer has no seat — a host who chose not to play has
-                no participant record, and a line about "your card" would be addressed to nobody. */}
+            {/* Nothing at all when the viewer has no seat — 'none' means no participant record,
+                which a guest reaches only by being kicked, and a line about "your card" would
+                be addressed to nobody. */}
             {seat !== 'none' && (
               <div className="flex items-center gap-2.5 text-[13px] text-muted">
                 <StatusDot tone="success" />

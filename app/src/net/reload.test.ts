@@ -7,8 +7,12 @@ beforeEach(() => { localStorage.clear(); useSession.getState().reset(); });
 
 describe('host reload restore', () => {
   it('persists on dispatch and restores an equal snapshot with reclaimable peer id', () => {
-    useSession.getState().initHost('HOSTID', FIBONACCI, true);
+    useSession.getState().initHost('HOSTID', FIBONACCI);
     saveHostPeerId('HOSTID');
+    // The host's own join, the way App dispatches it on opening a room. Without it this builds a
+    // seatless state that a live room can no longer produce, and the resume below would backfill
+    // a seat the snapshot never had.
+    useSession.getState().dispatch({ type: 'join', name: 'Host', role: 'voter' }, 'HOSTID');
     useSession.getState().dispatch({ type: 'join', name: 'Al', role: 'voter' }, 'P1');
     const before = useSession.getState().state!;
 

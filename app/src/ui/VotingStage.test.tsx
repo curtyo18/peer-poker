@@ -31,7 +31,6 @@ function base(overrides: Overrides) {
   const state: SessionState = {
     roomId: 'FROG-42',
     hostPeerId: 'host',
-    hostVotes: true,
     deck: FIBONACCI,
     participants: overrides.participants ?? [
       { peerId: 'p1', name: 'Ana', role: 'voter', connected: true },
@@ -96,12 +95,18 @@ describe('VotingStage', () => {
     expect(screen.getByText('1 player still deciding.')).toBeInTheDocument();
   });
 
-  // A host who chose not to play has no participant record at all — which is not the same as
-  // being an observer, and must not be described as waiting for themselves.
-  it('never tells a non-voting host to wait for the host', () => {
+  // No participant record is not the same as observing, and must not be described as waiting for
+  // yourself. A seated host who observes is covered separately, below — this is the seatless case,
+  // which a viewer reaches before their record exists or after being removed.
+  it('never tells a seatless host to wait for the host', () => {
     render(<VotingStage {...hostProps({ votes: {}, participants: [], myPeerId: 'host' })} />);
     expect(screen.queryByText(/waiting for the host/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /card hand/i })).not.toBeInTheDocument();
+    // No record means no seat to move out of, so the toggle must not be offered either — it would
+    // be wired to a participant that does not exist.
+    expect(
+      screen.queryByRole('button', { name: /take a seat|observe instead/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /reveal all/i })).toBeInTheDocument();
   });
 
@@ -375,5 +380,95 @@ describe('VotingStage nudge animation', () => {
 
     rerender(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 2 })} />);
     expect(hand()?.getAttribute('style')).toContain('ppnudge-shake-a');
+  });
+});
+
+describe('VotingStage — the seat toggle', () => {
+  const seatedHost = (role: 'voter' | 'observer') => hostProps({
+    participants: [
+      { peerId: 'host', name: 'Ana', role, connected: true },
+      { peerId: 'p1', name: 'Bo', role: 'voter', connected: true },
+    ],
+    myPeerId: 'host',
+  });
+
+  it('offers a voting host the seat toggle', () => {
+    render(<VotingStage {...seatedHost('voter')} />);
+    expect(screen.getByRole('button', { name: /observe instead/i })).toBeInTheDocument();
+  });
+
+  it('offers an observing host the way back to a seat', () => {
+    render(<VotingStage {...seatedHost('observer')} />);
+    expect(screen.getByRole('button', { name: /take a seat/i })).toBeInTheDocument();
+  });
+
+  // The host is who everyone else is waiting for, so guest copy on their screen tells them they
+  // are waiting for themselves — the bug the three-seat comment above `seat` exists to prevent,
+  // which reappeared the moment an observing host started holding a real record.
+  it('does not tell an observing host they are waiting for the host', () => {
+    render(<VotingStage {...seatedHost('observer')} />);
+    expect(screen.queryByText(/waiting for the host to reveal/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/reveal when the table is ready/i)).toBeInTheDocument();
+  });
+});
+
+describe('VotingStage — the nudge count', () => {
+  it('leaves the host out of the nudge count', () => {
+    const props = hostProps({
+      participants: [
+        { peerId: 'host', name: 'Ana', role: 'voter', connected: true },
+        { peerId: 'p1', name: 'Bo', role: 'voter', connected: true },
+        { peerId: 'p2', name: 'Cy', role: 'voter', connected: true },
+      ],
+      votes: { p1: '5' },
+      myPeerId: 'host',
+    });
+    render(<VotingStage {...props} />);
+    // Two unvoted voters exist — the host and Cy — but only Cy can receive a nudge.
+    expect(
+      screen.getByRole('button', { name: /nudge 1 player who has not voted/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves a disconnected voter out of the nudge count', () => {
+    const props = hostProps({
+      participants: [
+        { peerId: 'host', name: 'Ana', role: 'observer', connected: true },
+        { peerId: 'p1', name: 'Bo', role: 'voter', connected: true },
+        { peerId: 'p2', name: 'Cy', role: 'voter', connected: false },
+      ],
+      votes: {},
+      myPeerId: 'host',
+    });
+    render(<VotingStage {...props} />);
+    expect(
+      screen.getByRole('button', { name: /nudge 1 player who has not voted/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('hides the nudge button when the host is the only one left to vote', () => {
+    const props = hostProps({
+      participants: [
+        { peerId: 'host', name: 'Ana', role: 'voter', connected: true },
+        { peerId: 'p1', name: 'Bo', role: 'voter', connected: true },
+      ],
+      votes: { p1: '5' },
+      myPeerId: 'host',
+    });
+    render(<VotingStage {...props} />);
+    expect(screen.queryByRole('button', { name: /nudge/i })).not.toBeInTheDocument();
+  });
+
+  it('still counts the host in the table tally', () => {
+    const props = hostProps({
+      participants: [
+        { peerId: 'host', name: 'Ana', role: 'voter', connected: true },
+        { peerId: 'p1', name: 'Bo', role: 'voter', connected: true },
+      ],
+      votes: { p1: '5' },
+      myPeerId: 'host',
+    });
+    render(<VotingStage {...props} />);
+    expect(screen.getByText('1 of 2 voted')).toBeInTheDocument();
   });
 });

@@ -1,23 +1,61 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSession } from './session';
 import { FIBONACCI } from '../domain/decks';
+import { saveName } from './persistence';
+import type { SessionState } from '../domain/types';
 
-const fresh = () => useSession.getState().reset();
+beforeEach(() => {
+  localStorage.clear();
+  useSession.getState().reset();
+});
 
 describe('session store', () => {
-  beforeEach(fresh);
-
-  it('initialises a host session with an active-less agenda', () => {
-    useSession.getState().initHost('ROOM', FIBONACCI, true);
+  it('starts a host session seatless, until a join is dispatched', () => {
+    useSession.getState().initHost('ROOM', FIBONACCI);
     const s = useSession.getState().state!;
-    expect(s.roomId).toBe('ROOM');
-    expect(s.hostVotes).toBe(true);
-    expect(s.items).toEqual([]);
-    expect(s.activeItemId).toBeNull();
+    expect(s.hostPeerId).toBe('ROOM');
+    expect(s.participants).toEqual([]);
+  });
+
+  it('backfills a host seat when resuming a session saved before the host held one', () => {
+    saveName('Ana');
+    const legacy = {
+      roomId: 'ROOM', hostPeerId: 'HOST', hostVotes: false, deck: FIBONACCI,
+      participants: [{ peerId: 'g1', name: 'Bo', role: 'voter' as const, connected: false }],
+      items: [], activeItemId: null, revealed: false,
+    };
+    useSession.getState().resumeHost(legacy as unknown as SessionState);
+    const s = useSession.getState().state!;
+    expect(s.participants).toContainEqual(
+      { peerId: 'HOST', name: 'Ana', role: 'observer', connected: true },
+    );
+  });
+
+  // A device that has hosted but never stored a name still has to seat someone, and an empty
+  // string would broadcast a nameless participant to every guest.
+  it('falls back to a generic name when the device has none stored', () => {
+    const legacy = {
+      roomId: 'ROOM', hostPeerId: 'HOST', deck: FIBONACCI,
+      participants: [], items: [], activeItemId: null, revealed: false,
+    };
+    useSession.getState().resumeHost(legacy as SessionState);
+    expect(useSession.getState().state!.participants).toContainEqual(
+      { peerId: 'HOST', name: 'Host', role: 'observer', connected: true },
+    );
+  });
+
+  it('leaves an already-seated host alone on resume', () => {
+    const seated: SessionState = {
+      roomId: 'ROOM', hostPeerId: 'HOST', deck: FIBONACCI,
+      participants: [{ peerId: 'HOST', name: 'Ana', role: 'voter', connected: true }],
+      items: [], activeItemId: null, revealed: false,
+    };
+    useSession.getState().resumeHost(seated);
+    expect(useSession.getState().state!.participants).toHaveLength(1);
   });
 
   it('applies an intent through the store', () => {
-    useSession.getState().initHost('ROOM', FIBONACCI, false);
+    useSession.getState().initHost('ROOM', FIBONACCI);
     useSession.getState().dispatch({ type: 'join', name: 'Al', role: 'voter' }, 'P1');
     expect(useSession.getState().state!.participants).toHaveLength(1);
   });
@@ -29,7 +67,7 @@ describe('session store', () => {
   });
 
   it('update() applies a mutation to the current state', () => {
-    useSession.getState().initHost('ROOM', FIBONACCI, false);
+    useSession.getState().initHost('ROOM', FIBONACCI);
     useSession.getState().update((s) => ({ ...s, revealed: true }));
     expect(useSession.getState().state!.revealed).toBe(true);
   });
@@ -42,7 +80,7 @@ describe('session store', () => {
   });
 
   it('reset() clears state and host flag', () => {
-    useSession.getState().initHost('ROOM', FIBONACCI, true);
+    useSession.getState().initHost('ROOM', FIBONACCI);
     expect(useSession.getState().isHost).toBe(true);
     useSession.getState().reset();
     expect(useSession.getState().state).toBeNull();

@@ -65,6 +65,7 @@ export function RoomView(props: RoomViewProps) {
           roomCode={roomCode}
           shareLink={shareLink}
           qrDataUrl={qrDataUrl}
+          myPeerId={myPeerId}
           onLeave={onLeave}
           onMutate={onMutate}
           onKick={onKick}

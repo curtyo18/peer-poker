@@ -4,7 +4,7 @@ import { FIBONACCI } from './decks';
 import type { SessionState } from './types';
 
 const base = (): SessionState => ({
-  roomId: 'R', hostPeerId: 'H', hostVotes: false, deck: FIBONACCI,
+  roomId: 'R', hostPeerId: 'H', deck: FIBONACCI,
   participants: [], items: [], activeItemId: null, revealed: false,
 });
 
