@@ -375,4 +375,31 @@ describe('VotingStage nudge animation', () => {
     rerender(<VotingStage {...guestProps({ votes: {}, myPeerId: 'p2', nudgeSignal: 2 })} />);
     expect(hand()?.getAttribute('style')).toContain('ppnudge-shake-a');
   });
+
+  const seatedHost = (role: 'voter' | 'observer') => hostProps({
+    participants: [
+      { peerId: 'host', name: 'Ana', role, connected: true },
+      { peerId: 'p1', name: 'Bo', role: 'voter', connected: true },
+    ],
+    myPeerId: 'host',
+  });
+
+  it('offers a voting host the seat toggle', () => {
+    render(<VotingStage {...seatedHost('voter')} />);
+    expect(screen.getByRole('button', { name: /observe instead/i })).toBeTruthy();
+  });
+
+  it('offers an observing host the way back to a seat', () => {
+    render(<VotingStage {...seatedHost('observer')} />);
+    expect(screen.getByRole('button', { name: /take a seat/i })).toBeTruthy();
+  });
+
+  // The host is who everyone else is waiting for, so guest copy on their screen tells them they
+  // are waiting for themselves — the bug the three-seat comment above `seat` exists to prevent,
+  // which reappeared the moment an observing host started holding a real record.
+  it('does not tell an observing host they are waiting for the host', () => {
+    render(<VotingStage {...seatedHost('observer')} />);
+    expect(screen.queryByText(/waiting for the host to reveal/i)).toBeNull();
+    expect(screen.getByText(/reveal when the table is ready/i)).toBeTruthy();
+  });
 });

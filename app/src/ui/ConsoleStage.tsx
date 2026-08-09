@@ -1,8 +1,8 @@
 import type { SessionState } from '../domain/types';
-import { getGuest } from '../net/live';
 import { Agenda } from './Agenda';
 import { DeadRoom } from './ConnState';
 import { ResultsExport } from './ResultsExport';
+import { changeSeat, otherSeat } from './seat';
 import { ShareBar } from './ShareBar';
 import { TableCard } from './TableCard';
 import { Badge, Button, DisplayHeading, Kicker, Panel, StatusDot } from './primitives';
@@ -14,6 +14,7 @@ type ConsoleStageProps =
       roomCode: string | undefined;
       shareLink: string;
       qrDataUrl: string | null;
+      myPeerId: string | undefined;
       onLeave: () => void;
       onMutate: (fn: (s: SessionState) => SessionState) => void;
       onKick: (peerId: string) => void;
@@ -51,15 +52,14 @@ export function ConsoleStage(props: ConsoleStageProps) {
   }
   const roomLabel = roomCode?.toUpperCase() ?? state.roomId;
 
-  // Guest-only: identical to ParticipantView's role toggle, since the waiting lobby needs the
-  // same "take a seat / observe instead" affordance before any item is active.
-  const me =
-    role === 'guest' && props.myPeerId
-      ? state.participants.find((p) => p.peerId === props.myPeerId)
-      : undefined;
+  // Host and guest both — the waiting lobby needs the same "take a seat / observe instead"
+  // affordance before any item is active, and the host has a seat to change now too.
+  const me = props.myPeerId
+    ? state.participants.find((p) => p.peerId === props.myPeerId)
+    : undefined;
   const handleToggleRole = () => {
     if (!me) return;
-    getGuest()?.changeRole(me.role === 'observer' ? 'voter' : 'observer');
+    changeSeat(otherSeat(me.role), role === 'host', state.hostPeerId);
   };
 
   return (
@@ -115,6 +115,11 @@ export function ConsoleStage(props: ConsoleStageProps) {
               </ol>
             </Panel>
             <TableCard state={state} isHost onKick={props.onKick} />
+            {me && (
+              <Button variant="secondary" size="sm" className="mt-3" onClick={handleToggleRole}>
+                {me.role === 'voter' ? '👁 Observe instead' : 'Take a seat'}
+              </Button>
+            )}
           </div>
           <div className="flex flex-col gap-4">
             {/* The gold edge goes on the panel, not around it: a wrapper drew a second ring

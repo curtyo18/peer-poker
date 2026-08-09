@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AgendaItem, CardValue, SessionState } from '../domain/types';
 import { playNudgeChime } from '../audio/sound';
-import { getGuest } from '../net/live';
 import { reveal, skipItem } from '../domain/hostActions';
 import { CardHand } from './CardHand';
 import { DeadRoom } from './ConnState';
 import { LinkedTitle } from './LinkedTitle';
 import { PlayingCard } from './PlayingCard';
+import { changeSeat, otherSeat } from './seat';
 import { Avatar, Button, DisplayHeading, Kicker, Panel, PlayerPill, StatusDot, insetClass } from './primitives';
 
 type VotingStageProps = {
@@ -98,15 +98,16 @@ export function VotingStage(props: VotingStageProps) {
   const votedCount = voters.filter((p) => item.votes[p.peerId] !== undefined).length;
   const stillDeciding = voters.length - votedCount;
 
-  // Three seats, not two: a host who chose not to play is never seated at all, and a kicked guest
-  // stops being seated mid-round. Collapsing "no record" into "observer" tells a host they are
-  // waiting for themselves, and tells a removed guest they are observing. Both were live bugs.
+  // Three seats, not two: 'none' is now only "no participant record", reachable for a kicked
+  // guest or before a record exists — an observing host holds a real 'observer' record, same as
+  // any other observer, so collapsing it into 'none' would tell them they have no seat at all.
   const seat: 'voter' | 'observer' | 'none' = me?.role ?? 'none';
 
-  // Guest-only: identical to ConsoleStage's/ParticipantView's role toggle.
+  // Host and guest both: the host holds a seat like anyone else, and the only difference is which
+  // transport carries the change. See `changeSeat`.
   const handleToggleRole = () => {
     if (!me) return;
-    getGuest()?.changeRole(me.role === 'observer' ? 'voter' : 'observer');
+    changeSeat(otherSeat(me.role), props.role === 'host', state.hostPeerId);
   };
 
   const handleNudge = () => {
@@ -133,7 +134,7 @@ export function VotingStage(props: VotingStageProps) {
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
             <Kicker tone="muted">Table &middot; {voters.length} seated</Kicker>
             <div className="flex items-center gap-3">
-              {props.role === 'guest' && me && (
+              {me && (
                 <Button variant="secondary" size="sm" onClick={handleToggleRole}>
                   {me.role === 'voter' ? '👁 Observe instead' : 'Take a seat'}
                 </Button>
@@ -232,7 +233,9 @@ export function VotingStage(props: VotingStageProps) {
           {seat !== 'none' && (
             <p className="mt-4 text-center text-[12.5px] text-muted">
               {seat === 'observer'
-                ? 'Waiting for the host to reveal.'
+                ? props.role === 'host'
+                  ? 'You’re observing. Reveal when the table is ready.'
+                  : 'Waiting for the host to reveal.'
                 : myVote !== undefined
                   ? `You played ${myVote} · tap another card to change it — the table flips when the host reveals.`
                   : 'Play a card to join the round — the table flips when the host reveals.'}
@@ -319,8 +322,9 @@ export function VotingStage(props: VotingStageProps) {
           </div>
         ) : (
           <>
-            {/* Nothing at all when the viewer has no seat — a host who chose not to play has
-                no participant record, and a line about "your card" would be addressed to nobody. */}
+            {/* Nothing at all when the viewer has no seat — 'none' means no participant record,
+                which a guest reaches only by being kicked, and a line about "your card" would
+                be addressed to nobody. */}
             {seat !== 'none' && (
               <div className="flex items-center gap-2.5 text-[13px] text-muted">
                 <StatusDot tone="success" />
