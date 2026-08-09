@@ -104,7 +104,6 @@ interface AgendaItem {
 interface SessionState {
   roomId: string;                      // host peer id
   hostPeerId: string;
-  hostVotes: boolean;                  // host is a voter this session?
   deck: Deck;                          // active deck for this room
   participants: Participant[];
   items: AgendaItem[];
@@ -176,7 +175,10 @@ It is fire-and-forget — no acknowledgement, and nothing about it is persisted 
 
 Host actions are local mutations that produce a new `state` broadcast:
 create/reorder/remove item, set active item, reveal, re-vote (clear votes, `revealed=false`),
-accept estimate, change deck, toggle `hostVotes`, kick participant, end session.
+accept estimate, change deck, kick participant, end session.
+
+The host holds a `Participant` record like anyone else, so changing their own seat is the same
+`changeRole` intent a guest sends — applied directly rather than asked for. See ADR 0006.
 
 **Design rule:** the host never trusts a participant to mutate state. A `castVote` from a
 peer whose `role !== 'voter'`, or for a non-active item, is ignored.

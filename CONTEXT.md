@@ -1,7 +1,7 @@
 # PeerPoker — glossary
 
 Canonical meanings for the terms this codebase uses. Term → meaning only; implementation lives in
-the code and in `specs/`.
+the code, in `docs/design.md`, and in `docs/specs/`.
 
 ## Room and people
 
