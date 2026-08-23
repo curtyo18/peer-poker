@@ -49,12 +49,16 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
     if (!confirmingClear) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      // A row menu opened on top of the prompt has its own Escape, and both listeners are live at
+      // once. Escape backs out of the innermost thing first, or dismissing a menu would take the
+      // confirmation with it and the host would have to ask for it again.
+      if (menu.openId !== null) return;
       setConfirmingClear(false);
       menu.containerRef.current?.focus();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [confirmingClear, menu.containerRef]);
+  }, [confirmingClear, menu.openId, menu.containerRef]);
 
   // Both exits land focus on the panel: the button that was focused unmounts either way, and
   // dropping a keyboard user at the top of the document is the worst possible answer to "are you
@@ -149,8 +153,10 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
           <div
             role="group"
             aria-label="Confirm clearing the agenda"
-            // The question carries the count and the cost, so it is what the group is described by
-            // — otherwise the focused Cancel button announces neither.
+            // The question carries the count and the cost. It also has to hang off the buttons
+            // themselves: an accessible description is computed per element and does not inherit
+            // down from the group, so a description only up here is one the focused control never
+            // says.
             aria-describedby="agenda-clear-cost"
             className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger-border bg-surface-2 px-3.5 py-3"
           >
@@ -164,10 +170,21 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
               {/* Focus lands here rather than on the destructive button: the second step exists to
                   make this a second decision, and a focused "Clear" that Enter would fire hands
                   back the accident the confirmation was added to prevent. */}
-              <Button autoFocus variant="secondary" size="sm" onClick={cancelClear}>
+              <Button
+                autoFocus
+                aria-describedby="agenda-clear-cost"
+                variant="secondary"
+                size="sm"
+                onClick={cancelClear}
+              >
                 Cancel
               </Button>
-              <Button variant="danger" size="sm" onClick={clearAll}>
+              <Button
+                aria-describedby="agenda-clear-cost"
+                variant="danger"
+                size="sm"
+                onClick={clearAll}
+              >
                 Clear all
               </Button>
             </div>

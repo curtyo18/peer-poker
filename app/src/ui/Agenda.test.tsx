@@ -178,15 +178,27 @@ describe('Agenda', () => {
       expect(screen.queryByText(/won.t bring them back/i)).not.toBeInTheDocument();
     });
 
-    it('describes the prompt by the sentence carrying the count and the cost', async () => {
+    // On the buttons, not only on the group around them: a description is computed per element,
+    // so one that lives on the group is one the focused control never says.
+    it('describes both answers by the sentence carrying the count and the cost', async () => {
       render(<Agenda state={stateWith([{ title: 'First' }])} onMutate={vi.fn()} />);
       await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
-      const group = screen.getByRole('group', { name: /confirm clearing/i });
-      const describedBy = group.getAttribute('aria-describedby');
-      expect(describedBy).toBeTruthy();
-      expect(document.getElementById(describedBy as string)).toHaveTextContent(
-        /clear all 1 item\?.*won.t bring them back/i,
-      );
+      const cost = /clear all 1 item\?.*won.t bring them back/i;
+      expect(screen.getByRole('button', { name: /cancel/i })).toHaveAccessibleDescription(cost);
+      expect(screen.getByRole('button', { name: /clear all/i })).toHaveAccessibleDescription(cost);
+    });
+
+    // Two document-level Escape handlers are live at once here; the innermost layer goes first.
+    it('backs out of a row menu opened over the prompt without losing the prompt', async () => {
+      render(<Agenda state={stateWith([{ title: 'First' }])} onMutate={vi.fn()} />);
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      await userEvent.click(screen.getByRole('button', { name: /more actions/i }));
+      await userEvent.keyboard('{Escape}');
+      expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
+      expect(screen.getByText(/won.t bring them back/i)).toBeInTheDocument();
+
+      await userEvent.keyboard('{Escape}');
+      expect(screen.queryByText(/won.t bring them back/i)).not.toBeInTheDocument();
     });
 
     // Both exits unmount the focused button, and the answer to "are you sure?" must not be to
