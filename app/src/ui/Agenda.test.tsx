@@ -22,7 +22,7 @@ function stateWith(items: Array<Partial<AgendaItem>>): SessionState {
     ...emptyState(),
     items: items.map((item, i) => ({
       id: `item-${i}`,
-      title: item.title ?? '',
+      title: item.title,
       url: item.url,
       status: item.status ?? 'pending',
       votes: item.votes ?? {},
@@ -40,6 +40,54 @@ describe('Agenda', () => {
     await userEvent.click(screen.getByRole('button', { name: /^add$/i }));
     expect(onMutate.mock.results[0].value.items[0]).toMatchObject({
       title: 'Checkout spike', url: 'https://jira.acme.com/browse/PROJ-241',
+    });
+  });
+
+  // Link-first: a run of pasted tickets should become an agenda without a word being typed.
+  it('adds an item from a link alone, with no title typed', async () => {
+    const onMutate = vi.fn((fn) => fn(emptyState()));
+    render(<Agenda state={emptyState()} onMutate={onMutate} />);
+    await userEvent.type(screen.getByLabelText(/reference link/i), 'jira.acme.com/browse/PROJ-241');
+    await userEvent.click(screen.getByRole('button', { name: /^add$/i }));
+    expect(onMutate.mock.results[0].value.items[0]).toMatchObject({
+      title: undefined, url: 'https://jira.acme.com/browse/PROJ-241',
+    });
+  });
+
+  it('refuses only the item that is blank on both fields', async () => {
+    render(<Agenda state={emptyState()} onMutate={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /^add$/i })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText(/item title/i), 'One-off');
+    expect(screen.getByRole('button', { name: /^add$/i })).toBeEnabled();
+  });
+
+  // A row with no title of its own is named by its ticket key — once. The key also renders as a
+  // suffix beside a real title, and printing both would read as "(PROJ-241) (PROJ-241)".
+  it('names an untitled ticket row by its key, without doubling it', () => {
+    render(<Agenda state={stateWith([{ url: 'https://acme.atlassian.net/browse/PROJ-241' }])} onMutate={vi.fn()} />);
+    expect(screen.getByRole('link', { name: /PROJ-241/ })).toBeInTheDocument();
+    expect(screen.queryByText('(PROJ-241)')).not.toBeInTheDocument();
+    // The preview line still earns its place here — it says *which* Jira the key lives in.
+    expect(screen.getByText('acme.atlassian.net/browse/PROJ-241')).toBeInTheDocument();
+  });
+
+  // Nothing to add: the label already is the url shorthand, so a preview line would print the
+  // same string twice, one under the other.
+  it('does not repeat the url under an untitled non-ticket row', () => {
+    render(<Agenda state={stateWith([{ url: 'https://example.com/docs/spec' }])} onMutate={vi.fn()} />);
+    expect(screen.getAllByText('example.com/docs/spec')).toHaveLength(1);
+  });
+
+  it('lets a titled row be edited down to a bare link', async () => {
+    const initial = stateWith([{ title: 'Original', url: 'https://a.test/ticket-1' }]);
+    const onMutate = vi.fn((fn) => fn(initial));
+    render(<Agenda state={initial} onMutate={onMutate} />);
+    await userEvent.click(screen.getByRole('button', { name: /more actions/i }));
+    await userEvent.click(screen.getByRole('button', { name: /edit item/i }));
+    await userEvent.clear(screen.getByLabelText(/title for Original/i));
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    expect(onMutate.mock.results[0].value.items[0]).toMatchObject({
+      title: undefined, url: 'https://a.test/ticket-1',
     });
   });
 

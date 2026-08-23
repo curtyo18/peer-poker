@@ -12,8 +12,29 @@ describe('hostActions', () => {
   it('adds an item (title may be blank for one-off)', () => {
     const s = addItem(base(), '');
     expect(s.items).toHaveLength(1);
-    expect(s.items[0].title).toBe('');
+    expect(s.items[0].title).toBeUndefined();
     expect(s.items[0].status).toBe('pending');
+  });
+
+  // The link-first agenda form submits with the title box empty, and that is the common case,
+  // not an edge one.
+  it('adds a link-only item', () => {
+    const s = addItem(base(), '', 'jira.acme.com/browse/PROJ-241');
+    expect(s.items[0]).toMatchObject({
+      title: undefined, url: 'https://jira.acme.com/browse/PROJ-241',
+    });
+  });
+
+  // One shape for "no title" — otherwise '' and '   ' and undefined all reach the wire and every
+  // reader has to normalise them again.
+  it('stores a blank or whitespace-only title as undefined, and trims the rest', () => {
+    expect(addItem(base(), '   ').items[0].title).toBeUndefined();
+    expect(addItem(base(), '  Checkout spike  ').items[0].title).toBe('Checkout spike');
+  });
+
+  it('clears the title when an item is edited down to a bare link', () => {
+    const s = addItem(base(), 'Checkout spike', 'https://a.test');
+    expect(editItem(s, s.items[0].id, '', 'https://a.test').items[0].title).toBeUndefined();
   });
 
   it('sets active item, clearing prior votes and reveal', () => {

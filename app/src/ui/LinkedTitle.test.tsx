@@ -34,6 +34,19 @@ describe('LinkedTitle', () => {
     expect(screen.getByText('↗')).toBeInTheDocument();
   });
 
+  // An item can have no title of its own; the key becomes the name rather than a suffix on
+  // an empty string.
+  it('names an untitled ticket link by its key alone', () => {
+    render(<LinkedTitle url="https://acme.atlassian.net/browse/MYTHING-123" />);
+    expect(screen.getByRole('link', { name: /MYTHING-123/ })).toBeInTheDocument();
+    expect(screen.queryByText('(MYTHING-123)')).not.toBeInTheDocument();
+  });
+
+  it('names an untitled non-ticket link by its url shorthand', () => {
+    render(<LinkedTitle url="https://example.com/docs/spec" />);
+    expect(screen.getByRole('link', { name: /example\.com\/docs\/spec/ })).toBeInTheDocument();
+  });
+
   it('renders an unlinked item as text', () => {
     render(<LinkedTitle title="Checkout spike" />);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
