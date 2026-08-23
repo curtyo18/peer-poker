@@ -116,6 +116,14 @@ describe('RoomView', () => {
     expect(heading.querySelector('.font-mono')).not.toBeNull();
   });
 
+  // Nothing lowercases what a guest types on the way in, and the code is displayed to them in
+  // caps everywhere else, so an uppercased code is a room the host is already sitting in.
+  it('keeps the code treatment when a generated code was typed in caps', () => {
+    render(<RoomView {...props({ roomCode: '0A1B2C3D4E5F' })} />);
+    const heading = screen.getByRole('heading', { name: '0A1B2C3D4E5F' });
+    expect(heading.querySelector('.font-mono')).not.toBeNull();
+  });
+
   it('gives a guest the invite affordance when a share link is known', () => {
     render(<RoomView {...props({ role: 'guest' })} />);
     expect(screen.getByRole('button', { name: /copy invite link/i })).toBeInTheDocument();

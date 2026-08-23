@@ -58,7 +58,10 @@ export function ConsoleStage(props: ConsoleStageProps) {
   // which reads as prose in the display face exactly as typed. One treatment or the other — the
   // old markup mixed both by prefixing a display-face "Room " onto a mono'd label.
   const roomLabel = roomCode ?? state.roomId;
-  const isCode = isGeneratedRoomCode(roomLabel);
+  // Case-folded because the code that reaches here is whatever was typed: a guest who enters a
+  // generated code in caps is in the same room as the host who reads it in lowercase, and the two
+  // of them must not see the title in two different faces.
+  const isCode = isGeneratedRoomCode(roomLabel.toLowerCase());
   const guestShareLink = role === 'guest' ? props.shareLink : undefined;
 
   return (
