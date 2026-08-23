@@ -84,6 +84,8 @@ describe('JoinScreen', () => {
     render(<JoinScreen roomCode="FROG-42" storedName="" onJoin={onJoin} />);
     expect(screen.getByRole('button', { name: /join room/i })).toHaveClass(primaryClass);
     expect(screen.getByRole('button', { name: /^observe/i })).not.toHaveClass(primaryClass);
+    // The hint renders in this branch too, not only for a guest we already have a name for.
+    expect(screen.getByText(/observed last time/i)).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/what should we call you/i), 'Dana{Enter}');
     expect(onJoin).toHaveBeenCalledWith({ roomCode: 'FROG-42', name: 'Dana', role: 'voter' });
   });

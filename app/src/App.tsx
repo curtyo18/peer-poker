@@ -127,10 +127,10 @@ function App() {
   // real one. ADR-0009.
   //
   // Keyed on `state.items`, which every host action that touches an item replaces — voting,
-  // revealing, skipping and accepting included — so this runs well beyond agenda edits. The
-  // write is small and idempotent, so that is affordable; what it buys is that a guest *joining*
-  // leaves the reference alone (`join` returns `{ ...state, participants }`) and so cannot
-  // rewrite storage.
+  // revealing, skipping and accepting included — so this runs well beyond agenda edits. A
+  // guest joining normally leaves the reference alone (`join` returns `{ ...state, participants }`);
+  // a *reconnecting* one whose stale vote gets dropped replaces it too. Either way the write is
+  // the same rows again, so the only cost is bumping `savedAt` for the room being played in.
   useEffect(() => {
     if (mode !== 'host' || !state || !displayRoomCode) return;
     if (isGeneratedRoomCode(displayRoomCode)) return;
