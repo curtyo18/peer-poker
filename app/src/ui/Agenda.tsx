@@ -168,6 +168,7 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
                         // It lands on the link, which is the field the form leads with.
                         autoFocus
                         className={`${inputClass} ${monoClass} w-full`}
+                        placeholder="Paste a link — https://jira…/browse/PROJ-241"
                         value={editUrl}
                         onChange={(e) => setEditUrl(e.target.value)}
                       />
