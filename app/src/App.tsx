@@ -312,6 +312,9 @@ function App() {
   ) => {
     const id = await roomIdFromCode(roomCode);
     setDisplayRoomCode(roomCode);
+    // Guests can invite too: the link they arrived on is the link the next person needs, and the
+    // room header has nowhere else to get it from.
+    setShareLink(buildLink(roomCode));
     setAttemptedJoin({ roomCode, name, role });
     syncUrl(roomCode);
     const attempt = ++joinAttemptRef.current;

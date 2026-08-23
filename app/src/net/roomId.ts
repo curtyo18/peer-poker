@@ -21,3 +21,11 @@ export function randomRoomCode(): string {
   crypto.getRandomValues(bytes);
   return Array.from(bytes).map((b) => b.toString(36).padStart(2, '0')).join('').slice(0, 12);
 }
+
+// True when `code` has the exact shape `randomRoomCode` produces (12 lowercase base36 chars),
+// i.e. nobody typed it. Callers use this to decide presentation only: a typed room name that
+// happens to match the shape ("sprint42room") is a false positive whose only consequence is
+// cosmetic — it gets rendered as a code rather than as prose.
+export function isGeneratedRoomCode(code: string): boolean {
+  return /^[0-9a-z]{12}$/.test(code);
+}
