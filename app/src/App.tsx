@@ -124,8 +124,13 @@ function App() {
 
   // A named room is the one worth remembering: its code is something a team types again next
   // week, whereas a generated code is never reused, so saving its agenda could only evict a
-  // real one. Keyed on `state.items`, which the reducer replaces only when the agenda itself
-  // changes — a guest joining must not rewrite storage. ADR-0009.
+  // real one. ADR-0009.
+  //
+  // Keyed on `state.items`, which every host action that touches an item replaces — voting,
+  // revealing, skipping and accepting included — so this runs well beyond agenda edits. The
+  // write is small and idempotent, so that is affordable; what it buys is that a guest *joining*
+  // leaves the reference alone (`join` returns `{ ...state, participants }`) and so cannot
+  // rewrite storage.
   useEffect(() => {
     if (mode !== 'host' || !state || !displayRoomCode) return;
     if (isGeneratedRoomCode(displayRoomCode)) return;

@@ -23,9 +23,11 @@ export function randomRoomCode(): string {
 }
 
 // True when `code` has the exact shape `randomRoomCode` produces (12 lowercase base36 chars),
-// i.e. nobody typed it. Callers use this to decide presentation only: a typed room name that
-// happens to match the shape ("sprint42room") is a false positive whose only consequence is
-// cosmetic — it gets rendered as a code rather than as prose.
+// i.e. nobody typed it. Two things read this: the room header, to render a code as a code and a
+// name as prose, and the agenda store, which only remembers rooms that get reopened (ADR-0009).
+// So a typed name that happens to match the shape ("planning2026", "sprint42room") is a false
+// positive that costs more than looks: it renders as a code *and* its agenda is silently never
+// saved or restored. Distinguishing them properly needs a recorded marker, not a shape test.
 export function isGeneratedRoomCode(code: string): boolean {
   return /^[0-9a-z]{12}$/.test(code);
 }
