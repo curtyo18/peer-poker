@@ -36,14 +36,38 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
   const doneCount = state.items.filter((i) => i.status === 'accepted').length;
 
   // The last row going means there is nothing left to clear, so the prompt has to close itself —
-  // otherwise it hangs over an empty agenda offering to clear it.
+  // otherwise it hangs over an empty agenda offering to clear 0 items.
   useEffect(() => {
     if (state.items.length === 0) setConfirmingClear(false);
   }, [state.items.length]);
 
+  // On the document rather than on the prompt: clicking the question's own text moves focus to the
+  // panel container, an *ancestor* of the prompt, so a handler on the prompt would never see the
+  // key. This is the rule useRowMenu already applies a few hundred pixels away — Escape closing
+  // one thing in this panel and not the other is worse than either rule alone.
+  useEffect(() => {
+    if (!confirmingClear) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setConfirmingClear(false);
+      menu.containerRef.current?.focus();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [confirmingClear, menu.containerRef]);
+
+  // Both exits land focus on the panel: the button that was focused unmounts either way, and
+  // dropping a keyboard user at the top of the document is the worst possible answer to "are you
+  // sure?" — see useRowMenu, which exists for the same reason.
+  const cancelClear = () => {
+    setConfirmingClear(false);
+    menu.containerRef.current?.focus();
+  };
+
   const clearAll = () => {
     onMutate(clearItems);
     setConfirmingClear(false);
+    menu.containerRef.current?.focus();
   };
 
   // Either field alone is enough — the point of the link-first form is that a run of pasted
@@ -120,17 +144,17 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
 
         {confirmingClear && (
           // Not a browser confirm() and not a modal: the thing being cleared is right there
-          // underneath, and this keeps it in view while the question is answered. Escape is the
-          // same way out as the row menu's, so the panel has one dismissal rule.
+          // underneath, and this keeps it in view while the question is answered. Deliberately not
+          // an alertdialog — that promises a modal with a focus trap, which this is not.
           <div
             role="group"
             aria-label="Confirm clearing the agenda"
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') setConfirmingClear(false);
-            }}
+            // The question carries the count and the cost, so it is what the group is described by
+            // — otherwise the focused Cancel button announces neither.
+            aria-describedby="agenda-clear-cost"
             className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger-border bg-surface-2 px-3.5 py-3"
           >
-            <p className="m-0 text-[13.5px] text-fg-2">
+            <p id="agenda-clear-cost" className="m-0 text-[13.5px] text-fg-2">
               Clear all {state.items.length} {state.items.length === 1 ? 'item' : 'items'}?{' '}
               <span className="text-muted">
                 This room won&rsquo;t bring them back next time.
@@ -140,7 +164,7 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
               {/* Focus lands here rather than on the destructive button: the second step exists to
                   make this a second decision, and a focused "Clear" that Enter would fire hands
                   back the accident the confirmation was added to prevent. */}
-              <Button autoFocus variant="secondary" size="sm" onClick={() => setConfirmingClear(false)}>
+              <Button autoFocus variant="secondary" size="sm" onClick={cancelClear}>
                 Cancel
               </Button>
               <Button variant="danger" size="sm" onClick={clearAll}>

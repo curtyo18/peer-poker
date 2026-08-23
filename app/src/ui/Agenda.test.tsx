@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -29,6 +30,13 @@ function stateWith(items: Array<Partial<AgendaItem>>): SessionState {
       acceptedEstimate: item.acceptedEstimate ?? null,
     })),
   };
+}
+
+// Most cases here render a static state and assert on the mutation. Two of them are about what
+// the panel does once that mutation comes back, which needs a parent that actually applies it.
+function LiveAgenda({ initial }: { initial: SessionState }) {
+  const [state, setState] = useState(initial);
+  return <Agenda state={state} onMutate={(fn) => setState((s) => fn(s))} />;
 }
 
 describe('Agenda', () => {
@@ -155,11 +163,55 @@ describe('Agenda', () => {
       expect(screen.queryByText(/won.t bring them back/i)).not.toBeInTheDocument();
     });
 
-    it('closes the prompt on Escape', async () => {
+    // Escape has to work from wherever the pointer left focus, not only from the button the
+    // prompt opened on — clicking the question's own text focuses the panel container, which is
+    // an ancestor of the prompt, so a handler scoped to the prompt would never see the key.
+    it('closes the prompt on Escape, wherever focus has landed', async () => {
       render(<Agenda state={stateWith([{ title: 'First' }])} onMutate={vi.fn()} />);
       await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
       await userEvent.keyboard('{Escape}');
       expect(screen.queryByText(/won.t bring them back/i)).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      await userEvent.click(screen.getByText(/clear all 1 item\?/i));
+      await userEvent.keyboard('{Escape}');
+      expect(screen.queryByText(/won.t bring them back/i)).not.toBeInTheDocument();
+    });
+
+    it('describes the prompt by the sentence carrying the count and the cost', async () => {
+      render(<Agenda state={stateWith([{ title: 'First' }])} onMutate={vi.fn()} />);
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      const group = screen.getByRole('group', { name: /confirm clearing/i });
+      const describedBy = group.getAttribute('aria-describedby');
+      expect(describedBy).toBeTruthy();
+      expect(document.getElementById(describedBy as string)).toHaveTextContent(
+        /clear all 1 item\?.*won.t bring them back/i,
+      );
+    });
+
+    // Both exits unmount the focused button, and the answer to "are you sure?" must not be to
+    // drop a keyboard user at the top of the document.
+    it('keeps focus in the panel after either answer', async () => {
+      const { unmount } = render(<LiveAgenda initial={stateWith([{ title: 'First' }])} />);
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+      expect(document.activeElement).not.toBe(document.body);
+      unmount();
+
+      render(<LiveAgenda initial={stateWith([{ title: 'First' }])} />);
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      expect(document.activeElement).not.toBe(document.body);
+    });
+
+    // Otherwise the prompt hangs over an empty agenda offering to clear nothing.
+    it('closes itself when the last row goes some other way', async () => {
+      render(<LiveAgenda initial={stateWith([{ title: 'Only one' }])} />);
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      await userEvent.click(screen.getByRole('button', { name: /more actions/i }));
+      await userEvent.click(screen.getByRole('button', { name: /remove/i }));
+      expect(screen.queryByText(/won.t bring them back/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/no items yet/i)).toBeInTheDocument();
     });
 
     // Enter on the freshly-opened prompt must not clear the agenda: the focused control is the

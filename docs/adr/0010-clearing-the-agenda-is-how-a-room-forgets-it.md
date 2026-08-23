@@ -51,5 +51,8 @@ the same gesture; there is no second control for the stored copy.
   somewhere the save effect cannot delete first — that is a change to 0009, not a small feature.
 - The confirmation is the only inline destructive prompt in the app. A second one should reuse this
   shape (count, cost, Cancel focused, Escape closes) rather than inventing another.
-- Clearing during a live round is allowed and ends the round. The alternative — refusing while a
-  vote is open — protects a round that the host has just said they do not want.
+- The control is console-only: `RoomView` shows the voting or reveal stage while a round is live,
+  so the agenda panel — and with it Clear all — is reachable only between rounds. A host who wants
+  to clear mid-round skips or accepts first. `clearItems` still resets `activeItemId` and
+  `revealed` regardless, because that keeps the action total: it holds for any state a caller can
+  hand it, not only the ones today's UI can produce.
