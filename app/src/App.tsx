@@ -27,10 +27,12 @@ import {
   loadName,
   loadDecks,
   loadLastDeckId,
+  loadRoomAgenda,
+  saveRoomAgenda,
 } from './store/persistence';
 import { FIBONACCI } from './domain/decks';
 import { decideEntry } from './domain/entry';
-import { roomIdFromCode, randomRoomCode } from './net/roomId';
+import { roomIdFromCode, randomRoomCode, isGeneratedRoomCode } from './net/roomId';
 
 type Mode = 'landing' | 'join' | 'resume' | 'host' | 'guest';
 type Terminal = 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
@@ -119,6 +121,16 @@ function App() {
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
   }, [shareLink]);
+
+  // A named room is the one worth remembering: its code is something a team types again next
+  // week, whereas a generated code is never reused, so saving its agenda could only evict a
+  // real one. Keyed on `state.items`, which the reducer replaces only when the agenda itself
+  // changes — a guest joining must not rewrite storage. ADR-0009.
+  useEffect(() => {
+    if (mode !== 'host' || !state || !displayRoomCode) return;
+    if (isGeneratedRoomCode(displayRoomCode)) return;
+    saveRoomAgenda(state.roomId, state.items);
+  }, [mode, displayRoomCode, state?.roomId, state?.items]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (mode === 'guest' && state && connectTimeoutRef.current) {
@@ -215,6 +227,10 @@ function App() {
       // Unconditional now: the host holds a seat either way, and an observing host with no
       // participant record would have nothing to toggle when they change their mind.
       useSession.getState().dispatch({ type: 'join', name, role: hostRole }, assignedId);
+      // The agenda this room was last left with, if it is a room that gets reopened. Restored
+      // before the first broadcast so guests never see the room without it. ADR-0009.
+      const savedAgenda = isGeneratedRoomCode(code) ? null : loadRoomAgenda(assignedId);
+      if (savedAgenda) useSession.getState().update((s) => ({ ...s, items: savedAgenda }));
       host.broadcast();
       setShareLink(buildLink(code));
       syncUrl(code);
