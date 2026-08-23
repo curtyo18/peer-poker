@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AgendaItem, SessionState } from '../domain/types';
-import { addItem, editItem, setActive } from '../domain/hostActions';
+import { addItem, clearItems, editItem, setActive } from '../domain/hostActions';
 import { itemLabel, urlPreview } from '../domain/ticket';
 import { Button, DisplayHeading, Kicker, Panel, StatusDot, fieldClass, inputClass, monoClass } from './primitives';
 import { LinkedTitle } from './LinkedTitle';
@@ -28,11 +28,23 @@ function itemDotTone(item: AgendaItem, isActive: boolean): 'success' | 'accent' 
 export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
+  const [confirmingClear, setConfirmingClear] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editUrl, setEditUrl] = useState('');
   const menu = useRowMenu();
   const doneCount = state.items.filter((i) => i.status === 'accepted').length;
+
+  // The last row going means there is nothing left to clear, so the prompt has to close itself —
+  // otherwise it hangs over an empty agenda offering to clear it.
+  useEffect(() => {
+    if (state.items.length === 0) setConfirmingClear(false);
+  }, [state.items.length]);
+
+  const clearAll = () => {
+    onMutate(clearItems);
+    setConfirmingClear(false);
+  };
 
   // Either field alone is enough — the point of the link-first form is that a run of pasted
   // tickets becomes an agenda without a word being typed.
@@ -94,10 +106,49 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
               What are we estimating?
             </DisplayHeading>
           </div>
-          <span className="whitespace-nowrap text-xs text-muted">
-            {doneCount} / {state.items.length} done
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="whitespace-nowrap text-xs text-muted">
+              {doneCount} / {state.items.length} done
+            </span>
+            {state.items.length > 0 && !confirmingClear && (
+              <Button variant="ghost" size="sm" onClick={() => setConfirmingClear(true)}>
+                Clear all
+              </Button>
+            )}
+          </div>
         </div>
+
+        {confirmingClear && (
+          // Not a browser confirm() and not a modal: the thing being cleared is right there
+          // underneath, and this keeps it in view while the question is answered. Escape is the
+          // same way out as the row menu's, so the panel has one dismissal rule.
+          <div
+            role="group"
+            aria-label="Confirm clearing the agenda"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setConfirmingClear(false);
+            }}
+            className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger-border bg-surface-2 px-3.5 py-3"
+          >
+            <p className="m-0 text-[13.5px] text-fg-2">
+              Clear all {state.items.length} {state.items.length === 1 ? 'item' : 'items'}?{' '}
+              <span className="text-muted">
+                This room won&rsquo;t bring them back next time.
+              </span>
+            </p>
+            <div className="flex gap-2">
+              {/* Focus lands here rather than on the destructive button: the second step exists to
+                  make this a second decision, and a focused "Clear" that Enter would fire hands
+                  back the accident the confirmation was added to prevent. */}
+              <Button autoFocus variant="secondary" size="sm" onClick={() => setConfirmingClear(false)}>
+                Cancel
+              </Button>
+              <Button variant="danger" size="sm" onClick={clearAll}>
+                Clear all
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Link first, title second: the fastest way to fill an agenda is to paste a run of
             tickets, and a required title would make every one of them a typing job. */}

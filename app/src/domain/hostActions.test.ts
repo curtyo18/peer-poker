@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addItem, setActive, reveal, revote, accept, editItem, skipItem } from './hostActions';
+import { addItem, clearItems, setActive, reveal, revote, accept, editItem, skipItem } from './hostActions';
 import { FIBONACCI } from './decks';
 import type { SessionState } from './types';
 
@@ -35,6 +35,25 @@ describe('hostActions', () => {
   it('clears the title when an item is edited down to a bare link', () => {
     const s = addItem(base(), 'Checkout spike', 'https://a.test');
     expect(editItem(s, s.items[0].id, '', 'https://a.test').items[0].title).toBeUndefined();
+  });
+
+  // Clearing mid-round has to leave the room somewhere renderable: an activeItemId pointing at a
+  // row that no longer exists is a round with nothing in it.
+  it('clears every item and the round that was running on one', () => {
+    let s = addItem(addItem(base(), 'A'), 'B');
+    s = reveal(setActive(s, s.items[0].id));
+    const cleared = clearItems(s);
+    expect(cleared.items).toEqual([]);
+    expect(cleared.activeItemId).toBeNull();
+    expect(cleared.revealed).toBe(false);
+  });
+
+  it('leaves the rest of the session alone when it clears', () => {
+    const s = addItem(base(), 'A');
+    const cleared = clearItems(s);
+    expect(cleared.deck).toBe(s.deck);
+    expect(cleared.participants).toBe(s.participants);
+    expect(cleared.roomId).toBe(s.roomId);
   });
 
   it('sets active item, clearing prior votes and reveal', () => {

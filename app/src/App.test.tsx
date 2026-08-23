@@ -325,6 +325,22 @@ describe('App — a named room\u2019s remembered agenda', () => {
     expect(storedItems(roomId)[0].title).toBe('Saved item');
   });
 
+  // The point of Clear all: it is how a host says "not this list" to a room that would otherwise
+  // hand the same one back next week. The forgetting is the feature, not a side effect.
+  it('forgets the room when the host clears the agenda', async () => {
+    const roomId = await roomIdFromCode('weekly-refinement');
+    seedAgenda(roomId);
+
+    await hostRoom('weekly-refinement');
+    await screen.findByText('Saved item');
+
+    await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+    await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+
+    expect(screen.queryByText('Saved item')).not.toBeInTheDocument();
+    await waitFor(() => expect(storedItems(roomId)).toBeUndefined());
+  });
+
   // A generated code is never typed twice, so remembering its agenda could only evict a room
   // someone actually reopens.
   it('neither restores nor saves an agenda for a generated room code', async () => {

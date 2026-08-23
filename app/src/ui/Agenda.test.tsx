@@ -132,6 +132,65 @@ describe('Agenda', () => {
     expect(screen.getByLabelText(/reference link/i)).toHaveAttribute('id', 'agenda-url');
   });
 
+  describe('clear all', () => {
+    it('is not offered when there is nothing to clear', () => {
+      render(<Agenda state={emptyState()} onMutate={vi.fn()} />);
+      expect(screen.queryByRole('button', { name: /clear all/i })).not.toBeInTheDocument();
+    });
+
+    // Clearing now also drops the room's remembered copy, so it asks first — and says so.
+    it('asks before clearing, naming the cost', async () => {
+      render(<Agenda state={stateWith([{ title: 'First' }, { title: 'Second' }])} onMutate={vi.fn()} />);
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      expect(screen.getByText(/clear all 2 items\?/i)).toBeInTheDocument();
+      expect(screen.getByText(/won.t bring them back/i)).toBeInTheDocument();
+    });
+
+    it('leaves the agenda alone when the prompt is dismissed', async () => {
+      const onMutate = vi.fn();
+      render(<Agenda state={stateWith([{ title: 'First' }])} onMutate={onMutate} />);
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+      expect(onMutate).not.toHaveBeenCalled();
+      expect(screen.queryByText(/won.t bring them back/i)).not.toBeInTheDocument();
+    });
+
+    it('closes the prompt on Escape', async () => {
+      render(<Agenda state={stateWith([{ title: 'First' }])} onMutate={vi.fn()} />);
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      await userEvent.keyboard('{Escape}');
+      expect(screen.queryByText(/won.t bring them back/i)).not.toBeInTheDocument();
+    });
+
+    // Enter on the freshly-opened prompt must not clear the agenda: the focused control is the
+    // way out, not the destructive one.
+    it('opens with the safe action focused', async () => {
+      const onMutate = vi.fn();
+      render(<Agenda state={stateWith([{ title: 'First' }])} onMutate={onMutate} />);
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      expect(screen.getByRole('button', { name: /cancel/i })).toHaveFocus();
+      await userEvent.keyboard('{Enter}');
+      expect(onMutate).not.toHaveBeenCalled();
+    });
+
+    it('empties the agenda and the round on confirmation', async () => {
+      const initial = {
+        ...stateWith([{ title: 'First', status: 'voting' as const }, { title: 'Second' }]),
+        activeItemId: 'item-0',
+        revealed: true,
+      };
+      const onMutate = vi.fn((fn) => fn(initial));
+      render(<Agenda state={initial} onMutate={onMutate} />);
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      // The header trigger gives way to the prompt, so "Clear all" is unambiguous here: while the
+      // question is on screen the only button carrying that name is the one that answers it.
+      await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+      expect(onMutate.mock.results[0].value).toMatchObject({
+        items: [], activeItemId: null, revealed: false,
+      });
+    });
+  });
+
   describe('the overflow menu', () => {
     const twoItems = () => stateWith([{ title: 'First' }, { title: 'Second' }]);
 
