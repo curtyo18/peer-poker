@@ -14,9 +14,17 @@ function normalizeUrl(url: string | undefined): string | undefined {
   return HAS_SCHEME.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-export function addItem(s: SessionState, title: string, url?: string): SessionState {
+// Blank is a real answer, not a validation failure: an item can be a bare link named by its
+// ticket key, or a one-off with nothing at all. Stored as `undefined` either way so that "no
+// title" has one shape on the wire and in localStorage rather than two.
+function normalizeTitle(title: string | undefined): string | undefined {
+  const trimmed = title?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+export function addItem(s: SessionState, title?: string, url?: string): SessionState {
   const item: AgendaItem = {
-    id: uuid(), title, url: normalizeUrl(url),
+    id: uuid(), title: normalizeTitle(title), url: normalizeUrl(url),
     status: 'pending', votes: {}, acceptedEstimate: null,
   };
   return { ...s, items: [...s.items, item] };
@@ -25,11 +33,12 @@ export function addItem(s: SessionState, title: string, url?: string): SessionSt
 // Replaces both fields rather than patching one — `url` is required-but-nullable so a caller
 // that means to keep a link has to say so, instead of erasing it by forgetting an optional arg.
 export function editItem(
-  s: SessionState, id: string, title: string, url: string | undefined,
+  s: SessionState, id: string, title: string | undefined, url: string | undefined,
 ): SessionState {
   return {
     ...s,
-    items: s.items.map((i) => (i.id === id ? { ...i, title, url: normalizeUrl(url) } : i)),
+    items: s.items.map((i) =>
+      (i.id === id ? { ...i, title: normalizeTitle(title), url: normalizeUrl(url) } : i)),
   };
 }
 

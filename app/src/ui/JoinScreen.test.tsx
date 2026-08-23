@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { JoinScreen } from './JoinScreen';
 import { loadName } from '../store/persistence';
 
+// The primary button is the one carrying the accent fill; `primitives` gives it to `variant="primary"`
+// only, so it is how these tests tell "leads with" from "also offers".
+const primaryClass = 'bg-accent-btn';
+
 describe('JoinScreen', () => {
   // The first-time variant writes the name to localStorage, which outlives a render.
   afterEach(() => localStorage.clear());
@@ -56,19 +60,46 @@ describe('JoinScreen', () => {
     expect(screen.getByRole('button', { name: /join room/i })).toBeDisabled();
   });
 
-  it('offers Join as the primary action when the stored preference is voter', () => {
+  it('offers Join as the primary action and Observe alongside it', () => {
     localStorage.setItem('poker.seatPref', 'voter');
     render(<JoinScreen roomCode="FROG-42" storedName="Ana" onJoin={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /join room/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /join room/i })).toHaveClass(primaryClass);
     expect(screen.getByRole('button', { name: /join as observer/i })).toBeInTheDocument();
   });
 
-  it('offers Observe as the primary action when the stored preference is observer', async () => {
+  it('does not promote Observe to primary when the stored preference is observer', async () => {
     localStorage.setItem('poker.seatPref', 'observer');
     const onJoin = vi.fn();
     render(<JoinScreen roomCode="FROG-42" storedName="Ana" onJoin={onJoin} />);
-    await userEvent.click(screen.getByRole('button', { name: /^observe/i }));
-    expect(onJoin).toHaveBeenCalledWith({ roomCode: 'FROG-42', name: 'Ana', role: 'observer' });
+    const primary = screen.getByRole('button', { name: /join room/i });
+    expect(primary).toHaveClass(primaryClass);
+    expect(screen.getByRole('button', { name: /join as observer/i })).not.toHaveClass(primaryClass);
+    await userEvent.click(primary);
+    expect(onJoin).toHaveBeenCalledWith({ roomCode: 'FROG-42', name: 'Ana', role: 'voter' });
+  });
+
+  it('leads a first-time guest with Join even when the stored preference is observer', async () => {
+    localStorage.setItem('poker.seatPref', 'observer');
+    const onJoin = vi.fn();
+    render(<JoinScreen roomCode="FROG-42" storedName="" onJoin={onJoin} />);
+    expect(screen.getByRole('button', { name: /join room/i })).toHaveClass(primaryClass);
+    expect(screen.getByRole('button', { name: /^observe/i })).not.toHaveClass(primaryClass);
+    // The hint renders in this branch too, not only for a guest we already have a name for.
+    expect(screen.getByText(/observed last time/i)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/what should we call you/i), 'Dana{Enter}');
+    expect(onJoin).toHaveBeenCalledWith({ roomCode: 'FROG-42', name: 'Dana', role: 'voter' });
+  });
+
+  it('hints that the guest observed last time without changing the primary action', () => {
+    localStorage.setItem('poker.seatPref', 'observer');
+    render(<JoinScreen roomCode="FROG-42" storedName="Ana" onJoin={vi.fn()} />);
+    expect(screen.getByText(/observed last time/i)).toBeInTheDocument();
+  });
+
+  it('shows no observed-last-time hint when the stored preference is voter', () => {
+    localStorage.setItem('poker.seatPref', 'voter');
+    render(<JoinScreen roomCode="FROG-42" storedName="Ana" onJoin={vi.fn()} />);
+    expect(screen.queryByText(/observed last time/i)).not.toBeInTheDocument();
   });
 
   it('remembers the seat chosen on join', async () => {

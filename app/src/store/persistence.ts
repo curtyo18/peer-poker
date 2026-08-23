@@ -1,4 +1,4 @@
-import type { Deck, SessionState } from '../domain/types';
+import type { AgendaItem, Deck, SessionState } from '../domain/types';
 import { seedDecks } from '../domain/decks';
 
 const K = {
@@ -11,6 +11,7 @@ const K = {
   lastHostRoomName: 'poker.lastHostRoomName',
   lastJoinCode: 'poker.lastJoinCode',
   seatPref: 'poker.seatPref',
+  agendas: 'poker.agendas',
 } as const;
 
 function get(key: string): string | null {
@@ -66,3 +67,64 @@ export const saveLastJoinCode = (code: string): void => set(K.lastJoinCode, code
 export const loadSeatPref = (): 'voter' | 'observer' =>
   get(K.seatPref) === 'observer' ? 'observer' : 'voter';
 export const saveSeatPref = (role: 'voter' | 'observer'): void => set(K.seatPref, role);
+
+// An agenda a host prepared, keyed by room id so reopening the same named room gets it back.
+// Only what a host actually typed is kept: status, votes and accepted estimates belong to the
+// session that produced them, and restoring a stale "13" against a fresh round is worse than
+// restoring nothing. ADR-0009.
+type StoredAgenda = { savedAt: number; items: Array<Pick<AgendaItem, 'id' | 'title' | 'url'>> };
+
+// Rooms are remembered indefinitely but not without bound, so the store cannot grow forever on a
+// device that hosts a lot of them. Oldest save is evicted first.
+const AGENDA_ROOM_LIMIT = 10;
+
+function loadAgendaStore(): Record<string, StoredAgenda> {
+  const raw = get(K.agendas);
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, StoredAgenda>) : {};
+  } catch {
+    // One unreadable blob must not take out every room's agenda with it.
+    return {};
+  }
+}
+
+/**
+ * Remember this room's agenda, or forget it once the agenda is empty.
+ *
+ * Called on every host mutation, so it is written far more often than it is read — cheap because
+ * an agenda is a handful of short strings.
+ */
+export function saveRoomAgenda(roomId: string, items: AgendaItem[], now = Date.now()): void {
+  const store = loadAgendaStore();
+  if (items.length === 0) {
+    delete store[roomId];
+  } else {
+    store[roomId] = {
+      savedAt: now,
+      items: items.map(({ id, title, url }) => ({ id, title, url })),
+    };
+  }
+  const kept = Object.entries(store)
+    .sort(([, a], [, b]) => (b?.savedAt ?? 0) - (a?.savedAt ?? 0))
+    .slice(0, AGENDA_ROOM_LIMIT);
+  set(K.agendas, JSON.stringify(Object.fromEntries(kept)));
+}
+
+/**
+ * The agenda this room was last left with, as fresh items — nothing voted on, nothing accepted.
+ * Null when the room has none, so a caller can tell "no saved agenda" from "an empty one".
+ */
+export function loadRoomAgenda(roomId: string): AgendaItem[] | null {
+  const saved = loadAgendaStore()[roomId];
+  if (!saved || !Array.isArray(saved.items) || saved.items.length === 0) return null;
+  return saved.items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    url: item.url,
+    status: 'pending',
+    votes: {},
+    acceptedEstimate: null,
+  }));
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { SessionState } from '../domain/types';
+import { itemLabel } from '../domain/ticket';
 import { Button, Kicker, Panel } from './primitives';
 
 interface ResultsExportProps {
@@ -21,7 +22,7 @@ export function ResultsExport({ state, onEnd }: ResultsExportProps) {
   const [showResults, setShowResults] = useState(false);
   const accepted = state.items.filter((i) => i.acceptedEstimate !== null);
 
-  const rows = accepted.map((i) => ({ title: i.title || '(untitled)', estimate: i.acceptedEstimate as string }));
+  const rows = accepted.map((i) => ({ title: itemLabel(i), estimate: i.acceptedEstimate as string }));
 
   const handleCopy = () => {
     const text = rows.map((r) => `${r.title}\t${r.estimate}`).join('\n');

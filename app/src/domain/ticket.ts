@@ -31,3 +31,37 @@ export function ticketKey(url: string | undefined): string | null {
   const last = segments[browse + 1]?.toUpperCase();
   return last && ISSUE_KEY.test(last) ? last : null;
 }
+
+/**
+ * The human-readable shorthand for a reference link: host + path + query, minus the scheme.
+ *
+ * Keeps the query string — `…/browse?id=PROJ-241` and `…/browse?id=PROJ-999` would otherwise
+ * collapse to one string and two agenda rows would look identical. A stored url is only
+ * scheme-normalised, never validated (ADR-0003), so parsing can fail here; the raw string is
+ * the honest fallback.
+ */
+export function urlPreview(url: string): string {
+  try {
+    const { host, pathname, search } = new URL(url);
+    return `${host}${pathname === '/' ? '' : pathname}${search}`;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * What to call an agenda item on screen.
+ *
+ * A title is optional (ADR-0008): pasting a ticket link alone is the fast path for building an
+ * agenda, so an item with only a url still needs a name. The ticket key is the best one when the
+ * link carries it, the url shorthand when it doesn't. Everything falls back to `(untitled)`,
+ * because a blank one-off item is still allowed.
+ */
+export function itemLabel(item: { title?: string; url?: string }): string {
+  const title = item.title?.trim();
+  if (title) return title;
+  const key = ticketKey(item.url);
+  if (key) return key;
+  if (item.url) return urlPreview(item.url);
+  return '(untitled)';
+}

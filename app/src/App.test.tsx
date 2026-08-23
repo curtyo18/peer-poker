@@ -281,3 +281,66 @@ describe('App — guest join timeout', () => {
     expect(await screen.findByText(/couldn.t connect/i)).toBeInTheDocument();
   });
 });
+
+// ADR-0009: an agenda a host prepared is remembered per room, but only for a room whose code
+// someone typed. The gate and the restore both live in App, and the save path is destructive —
+// `saveRoomAgenda(roomId, [])` deletes the room's entry — so a host who opened a saved room and
+// committed one render with an empty agenda before the restore landed would silently lose it.
+describe('App — a named room\u2019s remembered agenda', () => {
+  const seedAgenda = (roomId: string) =>
+    localStorage.setItem('poker.agendas', JSON.stringify({
+      [roomId]: { savedAt: 1, items: [{ id: 'saved-1', title: 'Saved item' }] },
+    }));
+
+  const storedItems = (roomId: string) =>
+    JSON.parse(localStorage.getItem('poker.agendas') ?? '{}')[roomId]?.items;
+
+  async function hostRoom(code: string) {
+    const roomId = await roomIdFromCode(code);
+    await renderApp();
+    await userEvent.type(screen.getByLabelText(/your name/i), 'Curt');
+    await userEvent.type(screen.getByLabelText(/room name/i), code);
+    await userEvent.click(screen.getByRole('button', { name: /start a session/i }));
+    await waitFor(() => expect(latestPeer()).toBeDefined());
+    latestPeer().emit('open', roomId);
+    return roomId;
+  }
+
+  beforeEach(() => {
+    // The resume banner is a different entry point; these tests start a room from the form.
+    localStorage.removeItem('poker.session');
+    localStorage.removeItem('poker.roomCode');
+  });
+
+  it('repopulates the agenda when the room is reopened, and keeps it stored', async () => {
+    const roomId = await roomIdFromCode('weekly-refinement');
+    seedAgenda(roomId);
+
+    await hostRoom('weekly-refinement');
+
+    expect(await screen.findByText('Saved item')).toBeInTheDocument();
+    // The restore must win the race against the save effect's empty first render, or opening the
+    // room is what deletes the agenda.
+    await waitFor(() => expect(storedItems(roomId)).toHaveLength(1));
+    expect(storedItems(roomId)[0].title).toBe('Saved item');
+  });
+
+  // A generated code is never typed twice, so remembering its agenda could only evict a room
+  // someone actually reopens.
+  it('neither restores nor saves an agenda for a generated room code', async () => {
+    const code = 'abc123def456';
+    const roomId = await roomIdFromCode(code);
+    seedAgenda(roomId);
+
+    await hostRoom(code);
+
+    await screen.findByRole('button', { name: /^add$/i });
+    expect(screen.queryByText('Saved item')).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/reference link/i), 'jira.acme.com/browse/PROJ-1');
+    await userEvent.click(screen.getByRole('button', { name: /^add$/i }));
+
+    expect(await screen.findByText('PROJ-1')).toBeInTheDocument();
+    expect(storedItems(roomId)).toEqual([{ id: 'saved-1', title: 'Saved item' }]);
+  });
+});

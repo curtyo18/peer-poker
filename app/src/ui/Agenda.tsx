@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AgendaItem, SessionState } from '../domain/types';
 import { addItem, editItem, setActive } from '../domain/hostActions';
+import { itemLabel, urlPreview } from '../domain/ticket';
 import { Button, DisplayHeading, Kicker, Panel, StatusDot, fieldClass, inputClass, monoClass } from './primitives';
 import { LinkedTitle } from './LinkedTitle';
 import {
@@ -24,19 +25,6 @@ function itemDotTone(item: AgendaItem, isActive: boolean): 'success' | 'accent' 
   return 'muted';
 }
 
-// The preview line exists to tell two rows apart at a glance, so it keeps the query string —
-// `…/browse?id=PROJ-241` and `…/browse?id=PROJ-999` would otherwise collapse to one string. A
-// stored url is only scheme-normalised, never validated (ADR-0003), so it can still fail to parse
-// here even though it was accepted on the way in; the raw string is the honest fallback.
-function urlPreview(url: string): string {
-  try {
-    const { host, pathname, search } = new URL(url);
-    return `${host}${pathname === '/' ? '' : pathname}${search}`;
-  } catch {
-    return url;
-  }
-}
-
 export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
@@ -46,9 +34,13 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
   const menu = useRowMenu();
   const doneCount = state.items.filter((i) => i.status === 'accepted').length;
 
+  // Either field alone is enough — the point of the link-first form is that a run of pasted
+  // tickets becomes an agenda without a word being typed.
+  const canAdd = Boolean(title.trim() || url.trim());
+
   const handleAdd: React.FormEventHandler = (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!canAdd) return;
     onMutate((s) => addItem(s, title, url));
     setTitle('');
     setUrl('');
@@ -74,14 +66,16 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
 
   const startEdit = (item: AgendaItem) => {
     setEditingItemId(item.id);
-    setEditTitle(item.title);
+    setEditTitle(item.title ?? '');
     setEditUrl(item.url ?? '');
     menu.close();
   };
 
+  const canSaveEdit = Boolean(editTitle.trim() || editUrl.trim());
+
   const saveEdit: React.FormEventHandler = (e) => {
     e.preventDefault();
-    if (!editingItemId || !editTitle.trim()) return;
+    if (!editingItemId || !canSaveEdit) return;
     // `url` is required-but-nullable on editItem, so the current draft is passed even when only
     // the title changed — otherwise a forgotten argument silently drops the item's link.
     onMutate((s) => editItem(s, editingItemId, editTitle, editUrl));
@@ -105,48 +99,55 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
           </span>
         </div>
 
+        {/* Link first, title second: the fastest way to fill an agenda is to paste a run of
+            tickets, and a required title would make every one of them a typing job. */}
         <form className="mb-4" onSubmit={handleAdd}>
           <div className="rounded-xl bg-input-bg p-2.5">
             <div className={fieldClass}>
-              <label className="sr-only" htmlFor="agenda-title">
-                Item title
+              <label className="sr-only" htmlFor="agenda-url">
+                Reference link
               </label>
               <input
-                id="agenda-title"
-                className={`${inputClass} w-full`}
-                placeholder="Item title — what are you estimating?"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                id="agenda-url"
+                className={`${inputClass} ${monoClass} w-full`}
+                placeholder="Paste a link — https://jira…/browse/PROJ-241"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
               />
             </div>
             <div className="mt-2 flex gap-2">
               <div className={`${fieldClass} flex-1`}>
-                <label className="sr-only" htmlFor="agenda-url">
-                  Reference link (optional)
+                <label className="sr-only" htmlFor="agenda-title">
+                  Item title (optional)
                 </label>
                 <input
-                  id="agenda-url"
-                  className={`${inputClass} ${monoClass} w-full`}
-                  placeholder="Reference link (optional) — https://jira…/PROJ-241"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  id="agenda-title"
+                  className={`${inputClass} w-full`}
+                  placeholder="Custom title (optional)"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
-              <Button type="submit" variant="primary" disabled={!title.trim()}>
+              <Button type="submit" variant="primary" disabled={!canAdd}>
                 Add
               </Button>
             </div>
           </div>
           <p className="mt-2 text-xs text-muted">
-            Give the item a plain-text title. Add a reference URL and the title becomes a link
-            everyone at the table can click — no ticket lookup needed.
+            Paste a ticket link and press Enter — the row names itself from the issue key, and the
+            title everyone sees links straight to the ticket. Add a custom title only when the
+            link doesn&rsquo;t speak for itself.
           </p>
         </form>
 
         <ol className="flex flex-col gap-2.5">
           {state.items.map((item, index) => {
             const isActive = item.id === state.activeItemId;
-            const label = item.title || 'untitled item';
+            const label = itemLabel(item);
+            // The second line repeats the link so two rows sharing a title stay tellable apart.
+            // It is dropped when the label is already that same shorthand — an untitled non-ticket
+            // link would otherwise print its url twice, once per line.
+            const preview = item.url ? urlPreview(item.url) : null;
             return (
               <li
                 key={item.id}
@@ -157,32 +158,35 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
                 {editingItemId === item.id ? (
                   <form className="flex flex-col gap-2" onSubmit={saveEdit}>
                     <div className={fieldClass}>
-                      <label className="sr-only" htmlFor={`edit-title-${item.id}`}>
-                        Title for {label}
-                      </label>
-                      <input
-                        id={`edit-title-${item.id}`}
-                        // The menu item that opened this form has unmounted, so without an
-                        // explicit focus the form the user asked for opens with focus nowhere.
-                        autoFocus
-                        className={`${inputClass} w-full`}
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                      />
-                    </div>
-                    <div className={fieldClass}>
                       <label className="sr-only" htmlFor={`edit-url-${item.id}`}>
                         Reference URL for {label}
                       </label>
                       <input
                         id={`edit-url-${item.id}`}
+                        // The menu item that opened this form has unmounted, so without an
+                        // explicit focus the form the user asked for opens with focus nowhere.
+                        // It lands on the link, which is the field the form leads with.
+                        autoFocus
                         className={`${inputClass} ${monoClass} w-full`}
+                        placeholder="Paste a link — https://jira…/browse/PROJ-241"
                         value={editUrl}
                         onChange={(e) => setEditUrl(e.target.value)}
                       />
                     </div>
+                    <div className={fieldClass}>
+                      <label className="sr-only" htmlFor={`edit-title-${item.id}`}>
+                        Title for {label}
+                      </label>
+                      <input
+                        id={`edit-title-${item.id}`}
+                        className={`${inputClass} w-full`}
+                        placeholder="Custom title (optional)"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                      />
+                    </div>
                     <div className="flex gap-2">
-                      <Button type="submit" variant="primary" size="sm" disabled={!editTitle.trim()}>
+                      <Button type="submit" variant="primary" size="sm" disabled={!canSaveEdit}>
                         Save
                       </Button>
                       <Button
@@ -202,9 +206,11 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
                       <div className="truncate text-[15px] font-semibold">
                         <LinkedTitle title={item.title} url={item.url} />
                       </div>
-                      <div className={`mt-1 truncate text-[11px] text-muted ${monoClass}`}>
-                        {item.url ? urlPreview(item.url) : 'No reference link'}
-                      </div>
+                      {preview !== label && (
+                        <div className={`mt-1 truncate text-[11px] text-muted ${monoClass}`}>
+                          {preview ?? 'No reference link'}
+                        </div>
+                      )}
                     </div>
                     {item.acceptedEstimate !== null && (
                       <span className="font-display text-accent">{item.acceptedEstimate}</span>

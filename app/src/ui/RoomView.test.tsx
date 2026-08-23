@@ -100,4 +100,37 @@ describe('RoomView', () => {
     expect(screen.queryByRole('button', { name: /re-vote/i })).not.toBeInTheDocument();
     expect(screen.getByText(/the reveal/i)).toBeInTheDocument();
   });
+
+  // Issue #23: the eyebrow already says "Room", so the heading is only the name, and a typed
+  // name is not dressed up as a generated code.
+  it('titles the console with the room name alone, in prose for a typed name', () => {
+    render(<RoomView {...props({ roomCode: 'Sprint 42 planning' })} />);
+    const heading = screen.getByRole('heading', { name: 'Sprint 42 planning' });
+    expect(heading).toBeInTheDocument();
+    expect(heading.querySelector('.font-mono')).toBeNull();
+  });
+
+  it('keeps the code treatment for a generated room code', () => {
+    render(<RoomView {...props({ roomCode: '0a1b2c3d4e5f' })} />);
+    const heading = screen.getByRole('heading', { name: '0a1b2c3d4e5f' });
+    expect(heading.querySelector('.font-mono')).not.toBeNull();
+  });
+
+  // Nothing lowercases what a guest types on the way in, and the code is displayed to them in
+  // caps everywhere else, so an uppercased code is a room the host is already sitting in.
+  it('keeps the code treatment when a generated code was typed in caps', () => {
+    render(<RoomView {...props({ roomCode: '0A1B2C3D4E5F' })} />);
+    const heading = screen.getByRole('heading', { name: '0A1B2C3D4E5F' });
+    expect(heading.querySelector('.font-mono')).not.toBeNull();
+  });
+
+  it('gives a guest the invite affordance when a share link is known', () => {
+    render(<RoomView {...props({ role: 'guest' })} />);
+    expect(screen.getByRole('button', { name: /copy invite link/i })).toBeInTheDocument();
+  });
+
+  it('leaves the guest header bare when no share link is known', () => {
+    render(<RoomView {...props({ role: 'guest', shareLink: '' })} />);
+    expect(screen.queryByRole('button', { name: /copy invite link/i })).not.toBeInTheDocument();
+  });
 });

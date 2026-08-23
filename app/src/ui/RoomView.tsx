@@ -78,6 +78,7 @@ export function RoomView(props: RoomViewProps) {
         role="guest"
         state={state}
         roomCode={roomCode}
+        shareLink={shareLink}
         myPeerId={myPeerId}
         terminal={terminal}
         onLeave={onLeave}

@@ -1,4 +1,5 @@
 import type { SessionState } from '../domain/types';
+import { isGeneratedRoomCode } from '../net/roomId';
 import { Agenda } from './Agenda';
 import { DeadRoom } from './ConnState';
 import { ResultsExport } from './ResultsExport';
@@ -24,6 +25,8 @@ type ConsoleStageProps =
       role: 'guest';
       state: SessionState;
       roomCode: string | undefined;
+      /** Optional: when set, the guest gets the same copy-the-invite affordance as the host. */
+      shareLink?: string;
       myPeerId: string | undefined;
       /** A kick or an ended session leaves the last state in place, so the lobby must say so. */
       terminal: 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
@@ -50,7 +53,16 @@ export function ConsoleStage(props: ConsoleStageProps) {
   if (role === 'guest' && props.terminal) {
     return <DeadRoom terminal={props.terminal} onLeave={onLeave} />;
   }
-  const roomLabel = roomCode?.toUpperCase() ?? state.roomId;
+  // A host can type a free-text room name and it becomes the code, so the title has two shapes:
+  // a generated code, which reads as a code (mono, uppercased, gold), and a name someone wrote,
+  // which reads as prose in the display face exactly as typed. One treatment or the other — the
+  // old markup mixed both by prefixing a display-face "Room " onto a mono'd label.
+  const roomLabel = roomCode ?? state.roomId;
+  // Case-folded because the code that reaches here is whatever was typed: a guest who enters a
+  // generated code in caps is in the same room as the host who reads it in lowercase, and the two
+  // of them must not see the title in two different faces.
+  const isCode = isGeneratedRoomCode(roomLabel.toLowerCase());
+  const guestShareLink = role === 'guest' ? props.shareLink : undefined;
 
   return (
     <main
@@ -58,19 +70,28 @@ export function ConsoleStage(props: ConsoleStageProps) {
       style={{ animation: 'var(--animate-ppfade)' }}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-baseline gap-3">
-          <div>
-            <Kicker>{role === 'host' ? 'Host console' : 'Room'}</Kicker>
+        <div>
+          <Kicker>{role === 'host' ? 'Host console' : 'Room'}</Kicker>
+          {/* The badge belongs to the title, not to the eyebrow above it: as a sibling of this
+              whole block in an `items-baseline` row it sat against the kicker's baseline. */}
+          <div className="flex items-center gap-3">
             <DisplayHeading as="h2" className="text-2xl">
-              Room <span className="font-mono text-accent-soft">{roomLabel}</span>
+              {isCode ? (
+                <span className="font-mono uppercase text-accent-soft">{roomLabel}</span>
+              ) : (
+                roomLabel
+              )}
             </DisplayHeading>
+            <Badge tone="neutral">
+              <StatusDot tone="success" /> live
+            </Badge>
           </div>
-          <Badge tone="neutral">
-            <StatusDot tone="success" /> live
-          </Badge>
         </div>
         <div className="flex items-center gap-3">
           {role === 'host' && <ShareBar shareLink={props.shareLink} qrDataUrl={props.qrDataUrl} />}
+          {/* Guests had an empty header bar next to Leave. Same affordance as the host's, minus
+              the QR — a guest is invited, not the one printing the code. */}
+          {guestShareLink && <ShareBar shareLink={guestShareLink} qrDataUrl={null} />}
           <Button variant="ghost" size="sm" onClick={onLeave}>
             Leave
           </Button>

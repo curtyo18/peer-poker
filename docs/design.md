@@ -94,7 +94,7 @@ interface Participant {
 
 interface AgendaItem {
   id: string;                          // uuid
-  title: string;                       // "" allowed (one-off unnamed round)
+  title?: string;                      // optional — a link-only row names itself (ADR 0008)
   url?: string;                        // optional reference link; the title becomes it (ADR 0003)
   status: 'pending' | 'voting' | 'revealed' | 'accepted';
   votes: Record<string, CardValue>;    // peerId -> value (only for current round)
@@ -123,6 +123,7 @@ poker.hostPeerId        -> string           // persisted peer id for reclaim-on-
 poker.roomCode          -> string           // current room's code, for the resume banner
 poker.lastHostRoomName  -> string           // last "room name" typed on the host form
 poker.lastJoinCode      -> string           // last room code typed on the join form
+poker.agendas           -> Record<roomId, { savedAt, items }> // named rooms' saved agendas (ADR 0009)
 poker.theme             -> 'dark' | 'light' // UI theme; defaults to dark, user-switchable
 ```
 

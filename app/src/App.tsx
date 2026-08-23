@@ -27,10 +27,12 @@ import {
   loadName,
   loadDecks,
   loadLastDeckId,
+  loadRoomAgenda,
+  saveRoomAgenda,
 } from './store/persistence';
 import { FIBONACCI } from './domain/decks';
 import { decideEntry } from './domain/entry';
-import { roomIdFromCode, randomRoomCode } from './net/roomId';
+import { roomIdFromCode, randomRoomCode, isGeneratedRoomCode } from './net/roomId';
 
 type Mode = 'landing' | 'join' | 'resume' | 'host' | 'guest';
 type Terminal = 'kicked' | 'ended' | 'unreachable' | 'not-found' | 'no-answer' | null;
@@ -119,6 +121,21 @@ function App() {
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
   }, [shareLink]);
+
+  // A named room is the one worth remembering: its code is something a team types again next
+  // week, whereas a generated code is never reused, so saving its agenda could only evict a
+  // real one. ADR-0009.
+  //
+  // Keyed on `state.items`, which every host action that touches an item replaces — voting,
+  // revealing, skipping and accepting included — so this runs well beyond agenda edits. A
+  // guest joining normally leaves the reference alone (`join` returns `{ ...state, participants }`);
+  // a *reconnecting* one whose stale vote gets dropped replaces it too. Either way the write is
+  // the same rows again, so the only cost is bumping `savedAt` for the room being played in.
+  useEffect(() => {
+    if (mode !== 'host' || !state || !displayRoomCode) return;
+    if (isGeneratedRoomCode(displayRoomCode)) return;
+    saveRoomAgenda(state.roomId, state.items);
+  }, [mode, displayRoomCode, state?.roomId, state?.items]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (mode === 'guest' && state && connectTimeoutRef.current) {
@@ -215,6 +232,10 @@ function App() {
       // Unconditional now: the host holds a seat either way, and an observing host with no
       // participant record would have nothing to toggle when they change their mind.
       useSession.getState().dispatch({ type: 'join', name, role: hostRole }, assignedId);
+      // The agenda this room was last left with, if it is a room that gets reopened. Restored
+      // before the first broadcast so guests never see the room without it. ADR-0009.
+      const savedAgenda = isGeneratedRoomCode(code) ? null : loadRoomAgenda(assignedId);
+      if (savedAgenda) useSession.getState().update((s) => ({ ...s, items: savedAgenda }));
       host.broadcast();
       setShareLink(buildLink(code));
       syncUrl(code);
@@ -312,6 +333,9 @@ function App() {
   ) => {
     const id = await roomIdFromCode(roomCode);
     setDisplayRoomCode(roomCode);
+    // Guests can invite too: the link they arrived on is the link the next person needs, and the
+    // room header has nowhere else to get it from.
+    setShareLink(buildLink(roomCode));
     setAttemptedJoin({ roomCode, name, role });
     syncUrl(roomCode);
     const attempt = ++joinAttemptRef.current;

@@ -17,7 +17,12 @@ export type ItemStatus = 'pending' | 'voting' | 'revealed' | 'accepted';
 
 export interface AgendaItem {
   id: string;
-  title: string;
+  /**
+   * Optional. A row pasted as a bare link is named by its ticket key or its url instead
+   * (ADR-0008), and a one-off row can have neither. Render with `itemLabel()` rather than
+   * reading this directly, so every surface names an untitled item the same way.
+   */
+  title?: string;
   /** Optional reference link, stored as given with a scheme prefixed if missing. ADR-0003. */
   url?: string;
   status: ItemStatus;
