@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AgendaItem, SessionState } from '../domain/types';
-import { addItem, editItem, setActive } from '../domain/hostActions';
+import { addItem, clearItems, editItem, setActive } from '../domain/hostActions';
 import { itemLabel, urlPreview } from '../domain/ticket';
 import { Button, DisplayHeading, Kicker, Panel, StatusDot, fieldClass, inputClass, monoClass } from './primitives';
 import { LinkedTitle } from './LinkedTitle';
@@ -28,11 +28,51 @@ function itemDotTone(item: AgendaItem, isActive: boolean): 'success' | 'accent' 
 export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
+  const [confirmingClear, setConfirmingClear] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editUrl, setEditUrl] = useState('');
   const menu = useRowMenu();
   const doneCount = state.items.filter((i) => i.status === 'accepted').length;
+
+  // The last row going means there is nothing left to clear, so the prompt has to close itself —
+  // otherwise it hangs over an empty agenda offering to clear 0 items.
+  useEffect(() => {
+    if (state.items.length === 0) setConfirmingClear(false);
+  }, [state.items.length]);
+
+  // On the document rather than on the prompt: clicking the question's own text moves focus to the
+  // panel container, an *ancestor* of the prompt, so a handler on the prompt would never see the
+  // key. This is the rule useRowMenu already applies a few hundred pixels away — Escape closing
+  // one thing in this panel and not the other is worse than either rule alone.
+  useEffect(() => {
+    if (!confirmingClear) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // A row menu opened on top of the prompt has its own Escape, and both listeners are live at
+      // once. Escape backs out of the innermost thing first, or dismissing a menu would take the
+      // confirmation with it and the host would have to ask for it again.
+      if (menu.openId !== null) return;
+      setConfirmingClear(false);
+      menu.containerRef.current?.focus();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [confirmingClear, menu.openId, menu.containerRef]);
+
+  // Both exits land focus on the panel: the button that was focused unmounts either way, and
+  // dropping a keyboard user at the top of the document is the worst possible answer to "are you
+  // sure?" — see useRowMenu, which exists for the same reason.
+  const cancelClear = () => {
+    setConfirmingClear(false);
+    menu.containerRef.current?.focus();
+  };
+
+  const clearAll = () => {
+    onMutate(clearItems);
+    setConfirmingClear(false);
+    menu.containerRef.current?.focus();
+  };
 
   // Either field alone is enough — the point of the link-first form is that a run of pasted
   // tickets becomes an agenda without a word being typed.
@@ -94,10 +134,62 @@ export function Agenda({ state, onMutate, className = '' }: AgendaProps) {
               What are we estimating?
             </DisplayHeading>
           </div>
-          <span className="whitespace-nowrap text-xs text-muted">
-            {doneCount} / {state.items.length} done
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="whitespace-nowrap text-xs text-muted">
+              {doneCount} / {state.items.length} done
+            </span>
+            {state.items.length > 0 && !confirmingClear && (
+              <Button variant="ghost" size="sm" onClick={() => setConfirmingClear(true)}>
+                Clear all
+              </Button>
+            )}
+          </div>
         </div>
+
+        {confirmingClear && (
+          // Not a browser confirm() and not a modal: the thing being cleared is right there
+          // underneath, and this keeps it in view while the question is answered. Deliberately not
+          // an alertdialog — that promises a modal with a focus trap, which this is not.
+          <div
+            role="group"
+            aria-label="Confirm clearing the agenda"
+            // The question carries the count and the cost. It also has to hang off the buttons
+            // themselves: an accessible description is computed per element and does not inherit
+            // down from the group, so a description only up here is one the focused control never
+            // says.
+            aria-describedby="agenda-clear-cost"
+            className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger-border bg-surface-2 px-3.5 py-3"
+          >
+            <p id="agenda-clear-cost" className="m-0 text-[13.5px] text-fg-2">
+              Clear all {state.items.length} {state.items.length === 1 ? 'item' : 'items'}?{' '}
+              <span className="text-muted">
+                This room won&rsquo;t bring them back next time.
+              </span>
+            </p>
+            <div className="flex gap-2">
+              {/* Focus lands here rather than on the destructive button: the second step exists to
+                  make this a second decision, and a focused "Clear" that Enter would fire hands
+                  back the accident the confirmation was added to prevent. */}
+              <Button
+                autoFocus
+                aria-describedby="agenda-clear-cost"
+                variant="secondary"
+                size="sm"
+                onClick={cancelClear}
+              >
+                Cancel
+              </Button>
+              <Button
+                aria-describedby="agenda-clear-cost"
+                variant="danger"
+                size="sm"
+                onClick={clearAll}
+              >
+                Clear all
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Link first, title second: the fastest way to fill an agenda is to paste a run of
             tickets, and a required title would make every one of them a typing job. */}

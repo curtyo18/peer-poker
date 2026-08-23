@@ -42,6 +42,20 @@ export function editItem(
   };
 }
 
+/**
+ * Empty the agenda outright.
+ *
+ * The active item and the reveal go with it: the stage was pointing at a row that no longer
+ * exists, and a stale `activeItemId` renders a round with nothing in it. Deliberately not a
+ * bulk `removeItem` loop — one action, one broadcast, one saved state.
+ *
+ * A host clearing a named room's agenda also forgets it (ADR-0010): the empty list is what makes
+ * `saveRoomAgenda` drop the room's entry, so this is the "not this list" the persistence needs.
+ */
+export function clearItems(s: SessionState): SessionState {
+  return { ...s, items: [], activeItemId: null, revealed: false };
+}
+
 // "Skip" means "not now", not "never": the item drops out of the round and back into the queue
 // with its votes discarded, so it can be picked up again later.
 export function skipItem(s: SessionState): SessionState {
